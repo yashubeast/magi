@@ -6,7 +6,7 @@ import { config } from 'dotenv'
 config()
 const { DB_USER, DB_PASS } = process.env
 
-const db = mysql.createPool({
+export const db = mysql.createPool({
 	host: 'localhost',
 	user: DB_USER,
 	password: DB_PASS,
@@ -18,7 +18,7 @@ const db = mysql.createPool({
 })
 
 export const init_tables = async () => {
-	const schemaPath = path.resolve('./utils/database/table_schemas.sql')
+	const schemaPath = path.resolve('./table_schemas.sql')
 	const schema = await fs.readFile(schemaPath, 'utf8')
 
 	const conn = await db.getConnection()
@@ -29,5 +29,3 @@ export const init_tables = async () => {
 		conn.release()
 	}
 }
-
-export default db

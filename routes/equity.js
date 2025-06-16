@@ -1,19 +1,18 @@
 import { Router }from 'express'
-
-import { SchemaTransferCoin, SchemaBalance } from '../utils/schemas.js'
-import { getBalanceByUniqueID, transferCoin } from '../utils/crud.js'
+import * as ynp from 'ynp'
+import { db } from '../db.js'
 
 const router = Router()
 
 router.get('/balance', async (req, res) => {
-	const parsed = SchemaBalance.safeParse(req.body)
+	const parsed = ynp.SchemaBalance.safeParse(req.body)
 	if (!parsed.success) {
 		return res.status(400).json({ result: parsed.error.format() })
 	}
 
 	try {
 		const { unique_id } = parsed.data
-		const result = await getBalanceByUniqueID(unique_id)
+		const result = await ynp.getBalanceByUUID(unique_id, db)
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })
@@ -21,14 +20,29 @@ router.get('/balance', async (req, res) => {
 })
 
 router.post('/pay', async (req, res) => {
-	const parsed = SchemaTransferCoin.safeParse(req.body)
+	const parsed = ynp.SchemaTransferCoin.safeParse(req.body)
 	if (!parsed.success) {
 		return res.status(400).json({ result: parsed.error.format() })
 	}
 
 	try {
 		const { sender_id, receiver_id, amount } = parsed.data
-		const result = await transferCoin( sender_id, receiver_id, amount )
+		const result = await ynp.transferCoin( sender_id, receiver_id, amount, db )
+		res.status(200).json({ result })
+	} catch (err) {
+		res.status(404).json({ result: err.message })
+	}
+})
+
+router.post('/eval', async (req, res) => {
+	const parsed = ynp.SchemaEval.safeParse(req.body)
+	if (!parsed.success) {
+		return res.status(400).json({ result: parsed.error.format() })
+	}
+
+	try {
+		const { unique_id, message_id, message_length, timestamp } = parsed.data
+		const result = await ynp.evalDiscord( unique_id, message_id, message_length, timestamp, db )
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })

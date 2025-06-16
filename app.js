@@ -1,8 +1,7 @@
 import express from 'express'
 import { config } from 'dotenv'
 
-import db, { init_tables } from './utils/database/db.js'
-
+import { db, init_tables } from './db.js'
 import routerEquity from './routes/equity.js'
 
 const app = express()

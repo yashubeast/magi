@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
 export const SchemaEval = z.object({
-	user_id: z.number().int(),
-	server_id: z.number().int(),
+	unique_id: z.number().int(),
+	message_id: z.number().int(),
 	message_length: z.number().int(),
-	timestamp: z.coerce.date()
+	timestamp: z.number()
 })
 
 export const SchemaTransferCoin = z.object({

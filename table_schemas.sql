@@ -23,3 +23,20 @@ CREATE TABLE IF NOT EXISTS coin_transfers (
 	FOREIGN KEY (to_user_id) REFERENCES users(user_id),
 	FOREIGN KEY (source_coin_id) REFERENCES coins(coin_id)
 );
+
+CREATE TABLE IF NOT EXISTS discord_message_logs (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	discord_id BIGINT NOT NULL,
+	message_id BIGINT NOT NULL,
+	value NUMERIC(20, 2) NOT NULL CHECK (value > 0),
+	timestamp DOUBLE NOT NULL,
+	deleted TINYINT(1) DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS discord_users (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	discord_id BIGINT NOT NULL UNIQUE,
+	message_count INT DEFAULT 0,
+	last_message DOUBLE NULL,
+	FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE
+);
