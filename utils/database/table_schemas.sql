@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS users (
+	user_id INT PRIMARY KEY AUTO_INCREMENT,
+	discord_id BIGINT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS coins (
+	coin_id INT PRIMARY KEY AUTO_INCREMENT,
+	user_id INT NOT NULL,
+	value NUMERIC(20, 2) NOT NULL CHECK (value > 0),
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	spent TINYINT(1) DEFAULT 0,
+	FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS coin_transfers (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	coin_id INT NOT NULL,
+	from_user_id INT,
+	to_user_id INT NOT NULL,
+	transferred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	source_coin_id INT,
+	FOREIGN KEY (coin_id) REFERENCES coins(coin_id) ON DELETE CASCADE,
+	FOREIGN KEY (to_user_id) REFERENCES users(user_id),
+	FOREIGN KEY (source_coin_id) REFERENCES coins(coin_id)
+);
