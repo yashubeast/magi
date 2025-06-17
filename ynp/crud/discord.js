@@ -43,3 +43,19 @@ export async function getDiscordUser( discord_id, connection ) {
 	)
 	return rows
 }
+
+// get message bonus
+export async function getMessageBonus(connection) {
+	const [rows] = await connection.query(
+		"SELECT value FROM configuration WHERE name = 'discord_message_bonus' LIMIT 1"
+	)
+	return rows
+}
+
+// get tax rate
+export async function getTaxRate(connection) {
+	const [rows] = await connection.query(
+		"SELECT value FROM configuration WHERE name = 'discord_tax_rate' LIMIT 1"
+	)
+	return rows
+}

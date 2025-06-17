@@ -110,10 +110,8 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 		let last_message = null
 
 		if (Array.isArray(rows) && rows.length > 0) {
-			// last_message = new Date(rows[0].last_message)
 			last_message = rows[0].last_message
-			// message_time_gap = (new Date(timestamp) - last_message) / 1000
-			message_time_gap = (timestamp - last_message) / 1000
+			message_time_gap = (timestamp - last_message)
 			message_count = rows[0].message_count
 		}
 
@@ -124,14 +122,30 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 			time_value = 1 + overflow
 		}
 
+		const message_bonus_row = await discord.getMessageBonus(conn)
+		const message_bonus = new Decimal(message_bonus_row[0].value).toNumber()
+
 		let total = new Decimal(message_length)
-			.mul( 1 + 0.009 * message_count )
+			.mul( 1 + message_bonus * message_count )
 			.mul( time_value )
 			.toDecimalPlaces( 2 )
+			.toNumber()
 		
-		const totalValue = total.toNumber()
+		// const totalValue = total
+		const tax_rate_row = await discord.getTaxRate(conn)
+		const tax_rate = new Decimal(tax_rate_row[0].value).toNumber()
+		console.log('gain before tax: ', total)
+		const taxAmount = total * ( tax_rate / 100 )
+		const after_tax = total - taxAmount
 
-		console.log(totalValue)
+		const totalValue = Math.floor(after_tax)
+		const remainder = after_tax - totalValue
+		const toAdmin = new Decimal(taxAmount + remainder).toDecimalPlaces(2).toNumber()
+
+
+		console.log('gain after tax: ', totalValue)
+		console.log('amt to admin: ', toAdmin)
+		console.log('--------------')
 		if (totalValue < 1) return 0;
 
 		// Update / create discord_users entry
@@ -143,6 +157,7 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 		// log message
 		await discord.createDiscordMessageLog( unique_id, message_id, totalValue, timestamp, conn )
 
+		await main.createCoin(0, toAdmin, conn)
 		const auuid = await discord.getUser(unique_id, conn)
 		await main.genCoin(auuid, totalValue, conn)
 

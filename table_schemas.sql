@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS users (
 	discord_id BIGINT UNIQUE
 );
 
+SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
+INSERT IGNORE INTO users (user_id) VALUES (0);
+
 CREATE TABLE IF NOT EXISTS coins (
 	coin_id INT PRIMARY KEY AUTO_INCREMENT,
 	user_id INT NOT NULL,
@@ -23,6 +26,14 @@ CREATE TABLE IF NOT EXISTS coin_transfers (
 	FOREIGN KEY (to_user_id) REFERENCES users(user_id),
 	FOREIGN KEY (source_coin_id) REFERENCES coins(coin_id)
 );
+
+CREATE TABLE IF NOT EXISTS configuration (
+	name VARCHAR(25) PRIMARY KEY UNIQUE,
+	value DECIMAL(10, 5)
+);
+
+INSERT IGNORE INTO configuration (name, value) VALUES ('discord_tax_rate', 5.5);
+INSERT IGNORE INTO configuration (name, value) VALUES ('discord_message_bonus', 0.001);
 
 CREATE TABLE IF NOT EXISTS discord_message_logs (
 	id INT PRIMARY KEY AUTO_INCREMENT,
