@@ -105,25 +105,27 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 		}
 
 		// collect values for formulating
-		let message_time_gap = 2
+		let message_time_gap = 10
 		let message_count = 1
 		let last_message = null
 
 		if (Array.isArray(rows) && rows.length > 0) {
-			last_message = new Date(rows[0].last_message)
-			message_time_gap = (new Date(timestamp) - last_message) / 1000
+			// last_message = new Date(rows[0].last_message)
+			last_message = rows[0].last_message
+			// message_time_gap = (new Date(timestamp) - last_message) / 1000
+			message_time_gap = (timestamp - last_message) / 1000
 			message_count = rows[0].message_count
 		}
 
 		// formulate
 		let time_value = message_time_gap * 0.15
 		if (time_value > 1) {
-			const overflow = 1.2 * Math.log( 1 + ( message_time_gap - ( 7  / 60 ))) / Math.log(61)
-			// const overflow = 1.2 * Math.log( 1 + (( message_time_gap - 7 ) / 60 )) / Math.log(61)
+			const overflow = 1.2 * Math.log( 1 + ( message_time_gap -  7  / 60 )) / Math.log(61)
 			time_value = 1 + overflow
 		}
+
 		let total = new Decimal(message_length)
-			.mul( 1 + 0.001 * message_count )
+			.mul( 1 + 0.009 * message_count )
 			.mul( time_value )
 			.toDecimalPlaces( 2 )
 		
@@ -133,13 +135,10 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 		if (totalValue < 1) return 0;
 
 		// Update / create discord_users entry
-		await conn.query(`
-			INSERT INTO discord_users ( discord_id, message_count, last_message )
-			VALUES ( ?, 1, ? )
-			ON DUPLICATE KEY UPDATE
-				message_count = message_count + 1,
-				last_message = ?
-		`, [unique_id, timestamp, timestamp])
+		await conn.query(
+			'UPDATE discord_users SET message_count = message_count + 1, last_message = ? WHERE discord_id = ?',
+			[timestamp, unique_id]
+		)
 
 		// log message
 		await discord.createDiscordMessageLog( unique_id, message_id, totalValue, timestamp, conn )
