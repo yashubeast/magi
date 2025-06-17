@@ -16,6 +16,14 @@ export async function createDiscordUser( discord_id, connection ) {
 	return result.insertId
 }
 
+// create discord message log
+export async function createDiscordMessageLog( discord_id, message_id, value, timestamp, connection ) {
+	await connection.query(
+		`INSERT INTO discord_message_logs ( discord_id, message_id, value, timestamp ) VALUES (?, ?, ?, ?)`,
+		[ discord_id, message_id, value, timestamp ]
+	)
+}
+
 // get user_id using discord_id
 export async function getUser( discord_id, connection ) {
 	const [rows] = await connection.query(

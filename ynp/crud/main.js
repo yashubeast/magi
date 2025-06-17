@@ -10,7 +10,7 @@ export async function getBalance( UUID, connection ) {
 }
 //
 // get list of coins using UUID
-async function getCoins( UUID, connection ) {
+export async function getCoins( UUID, connection ) {
 	const [coins] = await connection.query(
 		'SELECT coin_id, value FROM coins WHERE user_id = ? AND spent = 0 ORDER BY value ASC',
 		[UUID]
@@ -19,7 +19,7 @@ async function getCoins( UUID, connection ) {
 }
 
 // get list of coins to transfer using using UUID
-async function getCoinsToTransfer( coins, amount ) {
+export async function getCoinsToTransfer( coins, amount ) {
 	let sum = 0
 	const selected = []
 	for ( const coin of coins ) {
@@ -31,10 +31,20 @@ async function getCoinsToTransfer( coins, amount ) {
 }
 
 // create coin
-async function createCoin( UUID, value, connection ) {
+export async function createCoin( UUID, value, connection ) {
 	const [result] = await connection.query(
 		'INSERT INTO coins (user_id, value) VALUES (?, ?)',
 		[UUID, value]
 	)
 	return result.insertId
+}
+
+// generate a new coin
+export async function genCoin( UUID, value, connection ) {
+	const coin = await createCoin( UUID, value, connection )
+
+	const [transferResult] = await connection.query(
+		'INSERT INTO coin_transfers (coin_id, from_user_id, to_user_id, source_coin_id) VALUES (?, ?, ?, ?)',
+		[coin, null, UUID, null]
+	)
 }

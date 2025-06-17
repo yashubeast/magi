@@ -126,6 +126,11 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 			.mul( 1 + 0.001 * message_count )
 			.mul( time_value )
 			.toDecimalPlaces( 2 )
+		
+		const totalValue = total.toNumber()
+
+		console.log(totalValue)
+		if (totalValue < 1) return 0;
 
 		// Update / create discord_users entry
 		await conn.query(`
@@ -136,24 +141,13 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 				last_message = ?
 		`, [unique_id, timestamp, timestamp])
 
-		console.log(total)
-		// log message if coins > 0
-		if ( !total.isZero() ) {
-			await conn.query(`
-				INSERT INTO discord_message_logs ( discord_id, message_id, value, timestamp )
-				VALUES (?, ?, ?, ?)
-			`, [ unique_id, message_id, total.toFixed(2), timestamp ])
-		}
+		// log message
+		await discord.createDiscordMessageLog( unique_id, message_id, totalValue, timestamp, conn )
 
-		return {
-			discord_id: unique_id,
-			message_length,
-			last_message: last_message ?? 'never',
-			new_message: timestamp,
-			message_time_gap,
-			message_count,
-			equity_gained: total.toString()
-		}
+		const auuid = await discord.getUser(unique_id, conn)
+		await main.genCoin(auuid, totalValue, conn)
+
+		return true
 	} finally {
 		conn.release()
 	}
