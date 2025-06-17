@@ -1,0 +1,46 @@
+name:
+  'nerv'
+
+services:
+
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: api
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MARIADB_ROOT_PASSWORD: admin
+    ports:
+      - '3306:3306'
+    volumes:
+      - mariadb:/var/lib/mysql
+
+  adminer:
+    image: adminer:5
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      - mariadb
+
+  magi:
+    pull_policy: never
+    image: magi
+    container_name: magi
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    depends_on:
+      - mariadb
+    volumes:
+      - ./.env:/app/.env
+
+volumes:
+  mariadb:
+
+networks:
+  default:
+    name: seele
