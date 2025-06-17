@@ -5,9 +5,9 @@ export async function getBalance( UUID, connection ) {
 		'SELECT COALESCE(SUM(value), 0) AS balance FROM coins WHERE user_id = ? AND spent = 0',
 		[UUID]
 	)
-
 	return rows[0].balance
 }
+
 //
 // get list of coins using UUID
 export async function getCoins( UUID, connection ) {

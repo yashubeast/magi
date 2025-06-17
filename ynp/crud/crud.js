@@ -3,7 +3,9 @@ import * as discord from './discord.js'
 import Decimal from 'decimal.js'
 
 // p2p transfer
-export async function transferCoin( sender_id, receiver_id, amount, connection ) {
+export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
+	const sender_id = BigInt(string_sender_id)
+	const receiver_id = BigInt(string_receiver_id)
 	if ( sender_id == receiver_id ) { return 'self transfer not allowed' }
 	const conn = await connection.getConnection()
 
@@ -93,9 +95,13 @@ export async function transferCoin( sender_id, receiver_id, amount, connection )
 
 
 // eval
-export async function evalDiscord( unique_id, message_id, message_length, timestamp, connection ) {
+export async function evalDiscord( string_unique_id, string_message_id, message_length, string_timestamp, connection ) {
 	const conn = await connection.getConnection()
 	try {
+
+		const unique_id = BigInt(string_unique_id)
+		const message_id = BigInt(string_message_id)
+		const timestamp = Number(string_timestamp)
 
 		//fetch discord message data
 		const rows = await discord.getDiscordUser( unique_id, conn )
@@ -162,6 +168,88 @@ export async function evalDiscord( unique_id, message_id, message_length, timest
 		await main.genCoin(auuid, totalValue, conn)
 
 		return true
+	} finally {
+		conn.release()
+	}
+}
+
+export async function del( string_user_id, string_message_id, connection ) {
+	const conn = await connection.getConnection()
+	try {
+		await conn.beginTransaction()
+		const user_id = BigInt(string_user_id)
+		const message_id = BigInt(string_message_id)
+		await conn.query(
+			'UPDATE discord_message_logs SET deleted = 1 WHERE discord_id = ? AND message_id = ?',
+			[ user_id, message_id ]
+		)
+		const [ amount_row ] = await conn.query(
+			'SELECT value FROM discord_message_logs WHERE discord_id = ? AND message_id = ?',
+			[ user_id, message_id ]
+		)
+		await conn.query(
+			'UPDATE discord_users SET message_count = message_count - 1 WHERE discord_id = ?',
+			[ user_id ]
+		)
+		const amount = new Decimal( amount_row[0].value )
+		const auuid = await discord.getUser(user_id, conn)
+		const coins = await main.getCoins(auuid, conn)
+		const { sum, selected } = await main.getCoinsToTransfer(coins, amount)
+		const change = sum - amount
+
+		const ids = selected.map( c => c.coin_id )
+		const placeholders = ids.map(() => '?').join(', ')
+
+		// lock the coins to be spent
+		const [locked] = await conn.query(
+			`SELECT spent FROM coins WHERE coin_id IN (${placeholders}) FOR UPDATE`,
+			ids
+		)
+		if (locked.some( c => c.spent)) {
+			await conn.rollback()
+			return 'spent coins interference'
+		}
+
+		// spend the coins
+		await conn.query(
+			`UPDATE coins SET spent = 1 WHERE coin_id IN (${placeholders})`,
+			ids
+		)
+
+		// pay admin
+		const newCoinID = await main.createCoin(0, sum, conn)
+
+		// return change
+		let changeCoinID = null
+		if (change > 0) {
+			changeCoinID = await main.createCoin(user_id, change.toNumber(), conn)
+		}
+
+		// receiver coin transfer
+		const receiverTransfers = selected.map( c =>
+			conn.query(
+				'INSERT INTO coin_transfers (coin_id, from_user_id, to_user_id, source_coin_id) VALUES (?, ?, ?, ?)',
+				[newCoinID, auuid, 0, c.coin_id]
+			)
+		)
+
+		// sender coin transfer
+		const senderTransfers = changeCoinID
+			? selected.map( c =>
+				conn.query(
+					'INSERT INTO coin_transfers (coin_id, from_user_id, to_user_id, source_coin_id) VALUES (?, ?, ?, ?)',
+					[changeCoinID, user_id, user_id, c.coin_id]
+				))
+			: []
+
+		// create coin_transfers for each source coin
+		await Promise.all([...receiverTransfers, ...senderTransfers])
+
+		await conn.commit()
+		return true
+	} catch (err) {
+			await conn.rollback()
+			throw err
 	} finally {
 		conn.release()
 	}

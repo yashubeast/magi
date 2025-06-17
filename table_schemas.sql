@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
-INSERT IGNORE INTO users (user_id) VALUES (0);
+INSERT IGNORE INTO users (user_id, discord_id) VALUES (0, 0);
 
 CREATE TABLE IF NOT EXISTS coins (
 	coin_id INT PRIMARY KEY AUTO_INCREMENT,

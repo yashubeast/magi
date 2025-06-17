@@ -12,7 +12,8 @@ router.get('/balance', async (req, res) => {
 
 	try {
 		const { unique_id } = parsed.data
-		const result = await ynp.getBalanceByUUID(unique_id, db)
+		const auuid = await ynp.getUser(BigInt(unique_id), db)
+		const result = await ynp.getBalance(auuid, db)
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })
@@ -43,6 +44,21 @@ router.post('/eval', async (req, res) => {
 	try {
 		const { unique_id, message_id, message_length, timestamp } = parsed.data
 		const result = await ynp.evalDiscord( unique_id, message_id, message_length, timestamp, db )
+		res.status(200).json({ result })
+	} catch (err) {
+		res.status(404).json({ result: err.message })
+	}
+})
+
+router.delete('/del', async (req, res) => {
+	const parsed = ynp.SchemaDel.safeParse(req.body)
+	if (!parsed.success) {
+		return res.status(400).json({ result: parsed.error.format() })
+	}
+
+	try {
+		const { user_id, message_id } = parsed.data
+		const result = await ynp.del( user_id, message_id, db )
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })
