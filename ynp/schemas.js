@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const SchemaEval = z.object({
-	unique_id: z.string(),
+	user_id: z.string(),
 	message_id: z.string(),
 	message_length: z.number().int(),
 	timestamp: z.string()
@@ -19,5 +19,5 @@ export const SchemaTransferCoin = z.object({
 })
 
 export const SchemaBalance = z.object({
-	unique_id: z.string()
+	user_id: z.string()
 })

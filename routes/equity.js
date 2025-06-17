@@ -11,8 +11,8 @@ router.get('/balance', async (req, res) => {
 	}
 
 	try {
-		const { unique_id } = parsed.data
-		const auuid = await ynp.getUser(BigInt(unique_id), db)
+		const { user_id } = parsed.data
+		const auuid = await ynp.getUser(BigInt(user_id), db)
 		const result = await ynp.getBalance(auuid, db)
 		res.status(200).json({ result })
 	} catch (err) {
@@ -42,8 +42,8 @@ router.post('/eval', async (req, res) => {
 	}
 
 	try {
-		const { unique_id, message_id, message_length, timestamp } = parsed.data
-		const result = await ynp.evalDiscord( unique_id, message_id, message_length, timestamp, db )
+		const { user_id, message_id, message_length, timestamp } = parsed.data
+		const result = await ynp.evalDiscord( user_id, message_id, message_length, timestamp, db )
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })
