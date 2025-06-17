@@ -222,7 +222,7 @@ export async function del( string_user_id, string_message_id, connection ) {
 		// return change
 		let changeCoinID = null
 		if (change > 0) {
-			changeCoinID = await main.createCoin(user_id, change.toNumber(), conn)
+			changeCoinID = await main.createCoin(user_id, change, conn)
 		}
 
 		// receiver coin transfer

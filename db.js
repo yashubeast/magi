@@ -4,13 +4,13 @@ import path from 'path'
 import { config } from 'dotenv'
 
 config()
-const { DB_USER, DB_PASS } = process.env
+const { DB_USER, DB_PASS, DB_URL, DB_NAME } = process.env
 
 export const db = mysql.createPool({
-	host: 'localhost',
+	host: DB_URL,
 	user: DB_USER,
 	password: DB_PASS,
-	database: 'api',
+	database: DB_NAME,
 	waitForConnections: true,
 	multipleStatements: true,
 	// connectionLimit: 10,
