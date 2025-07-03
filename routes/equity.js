@@ -57,8 +57,8 @@ router.delete('/del', async (req, res) => {
 	}
 
 	try {
-		const { user_id, message_id } = parsed.data
-		const result = await ynp.del( user_id, message_id, db )
+		const { message_id } = parsed.data
+		const result = await ynp.del( message_id, db )
 		res.status(200).json({ result })
 	} catch (err) {
 		res.status(404).json({ result: err.message })

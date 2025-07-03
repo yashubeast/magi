@@ -173,26 +173,34 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 	}
 }
 
-export async function del( string_user_id, string_message_id, connection ) {
+export async function del( string_message_id, connection ) {
 	const conn = await connection.getConnection()
 	try {
 		await conn.beginTransaction()
-		const user_id = BigInt(string_user_id)
+		// const user_id = BigInt(string_user_id)
 		const message_id = BigInt(string_message_id)
 		await conn.query(
-			'UPDATE discord_message_logs SET deleted = 1 WHERE discord_id = ? AND message_id = ?',
-			[ user_id, message_id ]
+			'UPDATE discord_message_logs SET deleted = 1 WHERE message_id = ?',
+			[ message_id ]
 		)
-		const [ amount_row ] = await conn.query(
-			'SELECT value FROM discord_message_logs WHERE discord_id = ? AND message_id = ?',
-			[ user_id, message_id ]
+		const [[ amount_row ]] = await conn.query(
+			'SELECT value, discord_id FROM discord_message_logs WHERE message_id = ? LIMIT 1',
+			[ message_id ]
 		)
+		const discord_id = BigInt(amount_row.discord_id)
+
+		const [[ uuid_row ]] = await conn.query(
+			'SELECT user_id FROM users WHERE discord_id = ? LIMIT 1',
+			[ discord_id ]
+		)
+		const user_id = parseInt(uuid_row.user_id)
+
 		await conn.query(
 			'UPDATE discord_users SET message_count = message_count - 1 WHERE discord_id = ?',
-			[ user_id ]
+			[ discord_id ]
 		)
-		const amount = new Decimal( amount_row[0].value )
-		const auuid = await discord.getUser(user_id, conn)
+		const amount = new Decimal( amount_row.value )
+		const auuid = await discord.getUser(discord_id, conn)
 		const coins = await main.getCoins(auuid, conn)
 		const { sum, selected } = await main.getCoinsToTransfer(coins, amount)
 		const change = sum - amount

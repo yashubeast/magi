@@ -14,6 +14,8 @@ export const db = mysql.createPool({
 	database: DB_NAME,
 	waitForConnections: true,
 	multipleStatements: true,
+	supportBigNumbers: true,
+	bigNumberStrings: true
 	// connectionLimit: 10,
 	// queueLimit: 0
 })

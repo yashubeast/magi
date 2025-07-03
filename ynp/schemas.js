@@ -8,7 +8,6 @@ export const SchemaEval = z.object({
 })
 
 export const SchemaDel = z.object({
-	user_id: z.string(),
 	message_id: z.string()
 })
 
