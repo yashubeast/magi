@@ -254,7 +254,7 @@ export async function del( string_message_id, connection ) {
 		await Promise.all([...receiverTransfers, ...senderTransfers])
 
 		await conn.commit()
-		return true
+		return amount
 	} catch (err) {
 			await conn.rollback()
 			throw err
