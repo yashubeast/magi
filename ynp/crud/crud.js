@@ -6,7 +6,7 @@ import Decimal from 'decimal.js'
 export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
 
 	const httpError = (status, message) =>
-		Object.assign(new Error(msg), {status})
+		Object.assign(new Error(message), {status})
 
 	const sender_id = BigInt(string_sender_id)
 	const receiver_id = BigInt(string_receiver_id)
