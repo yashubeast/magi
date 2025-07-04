@@ -140,7 +140,7 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 		// const totalValue = total
 		const tax_rate_row = await discord.getTaxRate(conn)
 		const tax_rate = new Decimal(tax_rate_row[0].value).toNumber()
-		console.log('gain before tax: ', total)
+		// console.log('gain before tax: ', total)
 		const taxAmount = total * ( tax_rate / 100 )
 		const after_tax = total - taxAmount
 
@@ -149,9 +149,9 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 		const toAdmin = new Decimal(taxAmount + remainder).toDecimalPlaces(2).toNumber()
 
 
-		console.log('gain after tax: ', totalValue)
-		console.log('amt to admin: ', toAdmin)
-		console.log('--------------')
+		// console.log('gain after tax: ', totalValue)
+		// console.log('amt to admin: ', toAdmin)
+		// console.log('--------------')
 		if (totalValue < 1) return 0;
 
 		// Update / create discord_users entry
@@ -167,7 +167,7 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 		const auuid = await discord.getUser(unique_id, conn)
 		await main.genCoin(auuid, totalValue, conn)
 
-		return true
+		return totalValue
 	} finally {
 		conn.release()
 	}
