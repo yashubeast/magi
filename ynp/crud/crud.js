@@ -4,6 +4,10 @@ import Decimal from 'decimal.js'
 
 // p2p transfer
 export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
+
+	const httpError = (status, message) =>
+		Object.assign(new Error(msg), {status})
+
 	const sender_id = BigInt(string_sender_id)
 	const receiver_id = BigInt(string_receiver_id)
 	if ( sender_id == receiver_id ) { return 'self transfer not allowed' }
@@ -20,7 +24,8 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		const balance = await main.getBalance(sender_user_id, conn)
 		if (balance < amount) {
 			await conn.rollback()
-			return 'insufficient balance'
+			// return 'insufficient balance'
+			throw httpError(400, 'Insufficient Balance')
 		}
 
 		// get list of coins
@@ -31,7 +36,8 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 
 		if ( sum < amount ) {
 			await conn.rollback()
-			return 'insufficient balance'
+			// return 'insufficient balance'
+			throw httpError(400, 'Insufficient Balance')
 		}
 		const change = sum - amount
 
