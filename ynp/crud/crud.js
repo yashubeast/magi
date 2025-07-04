@@ -185,10 +185,17 @@ export async function del( string_message_id, connection ) {
 		await conn.beginTransaction()
 		// const user_id = BigInt(string_user_id)
 		const message_id = BigInt(string_message_id)
-		await conn.query(
+		const [r] = await conn.query(
 			'UPDATE discord_message_logs SET deleted = 1 WHERE message_id = ?',
 			[ message_id ]
 		)
+
+		if (!r.affectedRows) {
+			const error = new Error('msg out of scope')
+			error.status = 400
+			throw error
+		}
+
 		const [[ amount_row ]] = await conn.query(
 			'SELECT value, discord_id FROM discord_message_logs WHERE message_id = ? LIMIT 1',
 			[ message_id ]
