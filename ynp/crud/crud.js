@@ -8,6 +8,7 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 	const sender_id = BigInt(string_sender_id)
 	const receiver_id = BigInt(string_receiver_id)
 	if ( sender_id == receiver_id ) { throw main.httpError(400, 'Self transfer not allowed') }
+	if ( amount <= 0 ) { throw main.httpError(400, 'Amount must be greater than 0') }
 	const conn = await connection.getConnection()
 
 	try {
