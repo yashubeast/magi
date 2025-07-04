@@ -1,3 +1,6 @@
+export const httpError = (status, message) =>
+	Object.assign(new Error(message), {status})
+
 // get balance using UUID
 export async function getBalance( UUID, connection ) {
 

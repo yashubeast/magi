@@ -5,12 +5,9 @@ import Decimal from 'decimal.js'
 // p2p transfer
 export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
 
-	const httpError = (status, message) =>
-		Object.assign(new Error(message), {status})
-
 	const sender_id = BigInt(string_sender_id)
 	const receiver_id = BigInt(string_receiver_id)
-	if ( sender_id == receiver_id ) { return 'self transfer not allowed' }
+	if ( sender_id == receiver_id ) { throw main.httpError(400, 'Self transfer not allowed') }
 	const conn = await connection.getConnection()
 
 	try {
@@ -25,7 +22,7 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		if (balance < amount) {
 			await conn.rollback()
 			// return 'insufficient balance'
-			throw httpError(400, 'Insufficient Balance')
+			throw main.httpError(400, 'Insufficient Balance')
 		}
 
 		// get list of coins
@@ -37,7 +34,7 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		if ( sum < amount ) {
 			await conn.rollback()
 			// return 'insufficient balance'
-			throw httpError(400, 'Insufficient Balance')
+			throw main.httpError(400, 'Insufficient Balance')
 		}
 		const change = sum - amount
 
@@ -51,7 +48,7 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		)
 		if (locked.some( c => c.spent)) {
 			await conn.rollback()
-			return 'spent coins interference'
+			throw main.httpError(404, 'Transfer Interference')
 		}
 
 		// spend the coins
@@ -191,9 +188,7 @@ export async function del( string_message_id, connection ) {
 		)
 
 		if (!r.affectedRows) {
-			const error = new Error('msg out of scope')
-			error.status = 400
-			throw error
+			throw main.httpError(400, 'out of scope')
 		}
 
 		const [[ amount_row ]] = await conn.query(
@@ -228,7 +223,7 @@ export async function del( string_message_id, connection ) {
 		)
 		if (locked.some( c => c.spent)) {
 			await conn.rollback()
-			return 'spent coins interference'
+			throw main.httpError(404, 'Transfer Inteference')
 		}
 
 		// spend the coins
