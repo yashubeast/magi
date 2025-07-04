@@ -31,7 +31,7 @@ router.post('/pay', async (req, res) => {
 		const result = await ynp.transferCoin( sender_id, receiver_id, amount, db )
 		res.status(200).json({ result })
 	} catch (err) {
-		res.status(404).json({ result: err.message })
+		res.status(err.status || 404).json({ result: err.message })
 	}
 })
 
