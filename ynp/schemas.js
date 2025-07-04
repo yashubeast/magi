@@ -14,7 +14,7 @@ export const SchemaDel = z.object({
 export const SchemaTransferCoin = z.object({
 	sender_id: z.string(),
 	receiver_id: z.string(),
-	amount: z.number().int().positive()
+	amount: z.number().int()
 })
 
 export const SchemaBalance = z.object({
