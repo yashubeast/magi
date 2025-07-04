@@ -1,7 +1,7 @@
 // create user
 export async function createUser( discord_id, connection ) {
 	const [result] = await connection.query(
-		'INSERT INTO users (discord_id) VALUES (?)',
+		'INSERT IGNORE INTO users (discord_id) VALUES (?)',
 		[discord_id]
 	)
 	return result.insertId
