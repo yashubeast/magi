@@ -60,3 +60,6 @@ magi.env
 
 # next.js build output
 .next
+
+# custom ig
+.git/

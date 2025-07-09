@@ -10,4 +10,3 @@ RUN git clone https://github.com/yashubeast/magi.git . && \
 EXPOSE 8000
 
 CMD ["node", "app.js"]
-

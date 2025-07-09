@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS discord_message_logs (
 
 CREATE TABLE IF NOT EXISTS discord_users (
 	id INT PRIMARY KEY AUTO_INCREMENT,
+	-- user_id INT NOT NULL,
 	discord_id BIGINT NOT NULL UNIQUE,
 	message_count INT DEFAULT 0,
 	last_message DOUBLE NULL,
+	-- FOREIGN KEY (user_id) REFERENCSE users(user_id) ON DELETE CASCADE
 	FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE
 );

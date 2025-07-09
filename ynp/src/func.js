@@ -1,41 +1,41 @@
-import * as main from './main.js'
-import * as discord from './discord.js'
 import Decimal from 'decimal.js'
+
+import { utils, get, add } from 'ynp'
 
 // p2p transfer
 export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
 
 	const sender_id = BigInt(string_sender_id)
 	const receiver_id = BigInt(string_receiver_id)
-	if ( sender_id == receiver_id ) { throw main.httpError(400, 'Self transfer not allowed') }
-	if ( amount <= 0 ) { throw main.httpError(400, 'Amount must be greater than 0') }
+	if ( sender_id == receiver_id ) { throw utils.httpError(400, 'Self transfer not allowed') }
+	if ( amount <= 0 ) { throw utils.httpError(400, 'Amount must be greater than 0') }
 	const conn = await connection.getConnection()
 
 	try {
 		await conn.beginTransaction()
 
 		// get values
-		const sender_user_id = await discord.getUser(sender_id, conn)
-		const receiver_user_id = await discord.getUser(receiver_id, conn)
+		const sender_user_id = await get.user(sender_id, conn)
+		const receiver_user_id = await get.user(receiver_id, conn)
 
 		// get balance
-		const balance = await main.getBalance(sender_user_id, conn)
+		const balance = await get.balance(sender_user_id, conn)
 		if (balance < amount) {
 			await conn.rollback()
 			// return 'insufficient balance'
-			throw main.httpError(400, 'Insufficient Balance')
+			throw utils.httpError(400, 'Insufficient Balance')
 		}
 
 		// get list of coins
-		const coins = await main.getCoins(sender_user_id, conn)
+		const coins = await get.coins(sender_user_id, conn)
 
 		// get coins to be transferred
-		const { sum, selected } = await main.getCoinsToTransfer(coins, amount)
+		const { sum, selected } = await get.coinsToTransfer(coins, amount)
 
 		if ( sum < amount ) {
 			await conn.rollback()
 			// return 'insufficient balance'
-			throw main.httpError(400, 'Insufficient Balance')
+			throw utils.httpError(400, 'Insufficient Balance')
 		}
 		const change = sum - amount
 
@@ -49,7 +49,7 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		)
 		if (locked.some( c => c.spent)) {
 			await conn.rollback()
-			throw main.httpError(404, 'Transfer Interference')
+			throw utils.httpError(404, 'Transfer Interference')
 		}
 
 		// spend the coins
@@ -59,12 +59,12 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		)
 
 		// pay the receiver
-		const newCoinID = await main.createCoin(receiver_user_id, amount, conn)
+		const newCoinID = await add.coin(receiver_user_id, amount, conn)
 
 		// return change
 		let changeCoinID = null
 		if (change > 0) {
-			changeCoinID = await main.createCoin(sender_user_id, change, conn)
+			changeCoinID = await add.coin(sender_user_id, change, conn)
 		}
 
 		// receiver coin transfer
@@ -108,10 +108,10 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 		const timestamp = Number(string_timestamp)
 
 		//fetch discord message data
-		const rows = await discord.getDiscordUser( unique_id, conn )
+		const rows = await get.discordUser( unique_id, conn )
 		if (!Array.isArray(rows) || rows.length === 0) {
-			await discord.createUser(unique_id, conn)
-			await discord.createDiscordUser(unique_id, conn)
+			await add.user(unique_id, conn)
+			await add.discordUser(unique_id, conn)
 		}
 
 		// collect values for formulating
@@ -132,7 +132,7 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 			time_value = 1 + overflow
 		}
 
-		const message_bonus_row = await discord.getMessageBonus(conn)
+		const message_bonus_row = await get.messageBonus(conn)
 		const message_bonus = new Decimal(message_bonus_row[0].value).toNumber()
 
 		let total = new Decimal(message_length)
@@ -142,7 +142,7 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 			.toNumber()
 		
 		// const totalValue = total
-		const tax_rate_row = await discord.getTaxRate(conn)
+		const tax_rate_row = await get.taxRate(conn)
 		const tax_rate = new Decimal(tax_rate_row[0].value).toNumber()
 		// console.log('gain before tax: ', total)
 		const taxAmount = total * ( tax_rate / 100 )
@@ -165,11 +165,11 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 		)
 
 		// log message
-		await discord.createDiscordMessageLog( unique_id, message_id, totalValue, timestamp, conn )
+		await add.discordMessageLog( unique_id, message_id, totalValue, timestamp, conn )
 
-		await main.createCoin(0, toAdmin, conn)
-		const auuid = await discord.getUser(unique_id, conn)
-		await main.genCoin(auuid, totalValue, conn)
+		await add.coin(0, toAdmin, conn)
+		const auuid = await get.user(unique_id, conn)
+		await add.genCoin(auuid, totalValue, conn)
 
 		return totalValue
 	} finally {
@@ -177,7 +177,7 @@ export async function evalDiscord( string_unique_id, string_message_id, message_
 	}
 }
 
-export async function del( string_message_id, connection ) {
+export async function delDiscord( string_message_id, connection ) {
 	const conn = await connection.getConnection()
 	try {
 		await conn.beginTransaction()
@@ -189,7 +189,7 @@ export async function del( string_message_id, connection ) {
 		)
 
 		if (!r.affectedRows) {
-			throw main.httpError(400, 'out of scope')
+			throw utils.httpError(400, 'out of scope')
 		}
 
 		const [[ amount_row ]] = await conn.query(
@@ -209,9 +209,9 @@ export async function del( string_message_id, connection ) {
 			[ discord_id ]
 		)
 		const amount = new Decimal( amount_row.value )
-		const auuid = await discord.getUser(discord_id, conn)
-		const coins = await main.getCoins(auuid, conn)
-		const { sum, selected } = await main.getCoinsToTransfer(coins, amount)
+		const auuid = await get.user(discord_id, conn)
+		const coins = await get.coins(auuid, conn)
+		const { sum, selected } = await get.coinsToTransfer(coins, amount)
 		const change = sum - amount
 
 		const ids = selected.map( c => c.coin_id )
@@ -224,7 +224,7 @@ export async function del( string_message_id, connection ) {
 		)
 		if (locked.some( c => c.spent)) {
 			await conn.rollback()
-			throw main.httpError(404, 'Transfer Inteference')
+			throw utils.httpError(404, 'Transfer Inteference')
 		}
 
 		// spend the coins
@@ -234,12 +234,12 @@ export async function del( string_message_id, connection ) {
 		)
 
 		// pay admin
-		const newCoinID = await main.createCoin(0, sum, conn)
+		const newCoinID = await add.coin(0, sum, conn)
 
 		// return change
 		let changeCoinID = null
 		if (change > 0) {
-			changeCoinID = await main.createCoin(user_id, change, conn)
+			changeCoinID = await add.coin(user_id, change, conn)
 		}
 
 		// receiver coin transfer
