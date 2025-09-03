@@ -16,6 +16,23 @@ export async function discordUser( discord_id, connection ) {
 	return result.insertId
 }
 
+// actually create user
+export async function realuser( connection ) {
+	const [result] = await connection.query(
+		'INSERT IGNORE INTO users () VALUES ()'
+	)
+	return result.insertId
+}
+
+// create minecraft user
+export async function minecraftUser( id, minecraft_id, connection ) {
+	const [result] = await connection.query(
+		'INSERT IGNORE INTO minecraft_users (id, minecraft_id) VALUES (?, ?)',
+		[id, minecraft_id]
+	)
+	return result.insertId
+}
+
 // create discord message log
 export async function discordMessageLog( discord_id, message_id, value, timestamp, connection ) {
 	await connection.query(

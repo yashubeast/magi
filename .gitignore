@@ -63,3 +63,4 @@ magi.env
 
 # custom ig
 .git/
+.idea/

@@ -3,11 +3,9 @@ import Decimal from 'decimal.js'
 import { utils, get, add } from 'ynp'
 
 // p2p transfer
-export async function transferCoin( string_sender_id, string_receiver_id, amount, connection ) {
+export async function transferCoin( sender_id, receiver_id, amount, connection, platform = "discord" ) {
 
-	const sender_id = BigInt(string_sender_id)
-	const receiver_id = BigInt(string_receiver_id)
-	if ( sender_id == receiver_id ) { throw utils.httpError(400, 'Self transfer not allowed') }
+	if ( sender_id === receiver_id ) { throw utils.httpError(400, 'Self transfer not allowed') }
 	if ( amount <= 0 ) { throw utils.httpError(400, 'Amount must be greater than 0') }
 	const conn = await connection.getConnection()
 
@@ -15,8 +13,15 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 		await conn.beginTransaction()
 
 		// get values
-		const sender_user_id = await get.user(sender_id, conn)
-		const receiver_user_id = await get.user(receiver_id, conn)
+		let sender_user_id, receiver_user_id
+
+		if (platform === "discord") {
+			sender_user_id = await get.user(sender_id, conn)
+			receiver_user_id = await get.user(receiver_id, conn)
+		} else if (platform === "minecraft") {
+			sender_user_id = await get.userMinecraft(sender_id, conn)
+			receiver_user_id = await get.userMinecraft(receiver_id, conn)
+		}
 
 		// get balance
 		const balance = await get.balance(sender_user_id, conn)
@@ -99,11 +104,10 @@ export async function transferCoin( string_sender_id, string_receiver_id, amount
 
 
 // eval
-export async function evalDiscord( string_unique_id, string_message_id, message_length, string_timestamp, connection ) {
+export async function evalDiscord( unique_id, string_message_id, message_length, string_timestamp, connection ) {
 	const conn = await connection.getConnection()
 	try {
 
-		const unique_id = BigInt(string_unique_id)
 		const message_id = BigInt(string_message_id)
 		const timestamp = Number(string_timestamp)
 
@@ -267,6 +271,81 @@ export async function delDiscord( string_message_id, connection ) {
 	} catch (err) {
 			await conn.rollback()
 			throw err
+	} finally {
+		conn.release()
+	}
+}
+
+// eval minecraft
+export async function evalMinecraft( minecraft_id, message_length, string_timestamp, connection ) {
+	const conn = await connection.getConnection()
+	try {
+
+		const unique_id = minecraft_id
+		const timestamp = Number(string_timestamp)
+
+		//fetch discord message data
+		const rows = await get.minecraftUser( unique_id, conn )
+		if (!Array.isArray(rows) || rows.length === 0) {
+			const temp_id = await add.realuser(conn)
+			await add.minecraftUser(temp_id, unique_id, conn)
+		}
+
+		// collect values for formulating
+		let message_time_gap = 10
+		let message_count = 1
+		let last_message = null
+
+		if (Array.isArray(rows) && rows.length > 0) {
+			last_message = rows[0].last_message
+			message_time_gap = (timestamp - last_message)
+			message_count = rows[0].message_count
+		}
+
+		// formulate
+		let time_value = message_time_gap * 0.15
+		if (time_value > 1) {
+			const overflow = 1.2 * Math.log( 1 + ( message_time_gap -  7  / 60 )) / Math.log(61)
+			time_value = 1 + overflow
+		}
+
+		const message_bonus_row = await get.messageBonus(conn)
+		const message_bonus = new Decimal(message_bonus_row[0].value).toNumber()
+
+		let total = new Decimal(message_length)
+			.mul( 1 + message_bonus * message_count )
+			.mul( time_value )
+			.toDecimalPlaces( 2 )
+			.toNumber()
+		
+		// const totalValue = total
+		const tax_rate_row = await get.taxRate(conn)
+		const tax_rate = new Decimal(tax_rate_row[0].value).toNumber()
+		// console.log('gain before tax: ', total)
+		const taxAmount = total * ( tax_rate / 100 )
+		const after_tax = total - taxAmount
+
+		const totalValue = Math.floor(after_tax)
+		const remainder = after_tax - totalValue
+		const toAdmin = new Decimal(taxAmount + remainder).toDecimalPlaces(2).toNumber()
+
+
+		// console.log('gain after tax: ', totalValue)
+		// console.log('amt to admin: ', toAdmin)
+		// console.log('--------------')
+		if (totalValue < 1) return 0;
+
+		// Update / create discord_users entry
+		await conn.query(
+			'UPDATE minecraft_users SET message_count = message_count + 1, last_message = ? WHERE minecraft_id = ?',
+			[timestamp, unique_id]
+		)
+
+		await add.coin(0, toAdmin, conn)
+		const auuid = await get.userMinecraft(unique_id, conn)
+		await add.genCoin(auuid, totalValue, conn)
+
+		return totalValue
 	} finally {
 		conn.release()
 	}

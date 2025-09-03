@@ -27,7 +27,7 @@ export const init_tables = async () => {
 	const conn = await db.getConnection()
 	try {
 		await conn.query(schema)
-		console.log('✅ tables initialized')
+		console.log(' tables initialized')
 	} finally {
 		conn.release()
 	}

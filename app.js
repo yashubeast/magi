@@ -15,13 +15,11 @@ app.listen( PORT, async () => {
 	try {
 		const conn = await db.getConnection()
 		conn.release()
-		console.log('✅ DB connected')
+		console.log(' DB connected')
 		await init_tables()
-		console.log(`✅ live on port ${PORT}`)
+		console.log(` live on port ${PORT}`)
 	} catch (err) {
-		console.error('❌ DB connection failed:', err)
+		console.error(' DB connection failed:', err)
 		process.exit(1)
 	}
 })
-
-export default app

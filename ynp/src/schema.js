@@ -7,6 +7,12 @@ export const Eval = z.object({
 	timestamp: z.string()
 })
 
+export const EvalMC = z.object({
+	user_id: z.string(),
+	message_length: z.number().int(),
+	timestamp: z.string()
+})
+
 export const Del = z.object({
 	message_id: z.string()
 })

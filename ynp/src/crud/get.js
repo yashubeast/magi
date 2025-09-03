@@ -49,6 +49,26 @@ export async function discordUser( discord_id, connection ) {
 	return rows
 }
 
+// get user_id using minecraft_id
+export async function userMinecraft( minecraft_id, connection ) {
+	const [rows] = await connection.query(
+		'SELECT id FROM minecraft_users WHERE minecraft_id = ? LIMIT 1',
+		[minecraft_id]
+	)
+
+	if (rows.length == 0) throw new Error('user not found')
+	return rows[0].id
+}
+
+// get minecraft user
+export async function minecraftUser( minecraft_id, connection ) {
+	const [rows] = await connection.query(
+		'SELECT * FROM minecraft_users WHERE minecraft_id = ? LIMIT 1',
+		[ minecraft_id ]
+	)
+	return rows
+}
+
 // get message bonus
 export async function messageBonus(connection) {
 	const [rows] = await connection.query(
