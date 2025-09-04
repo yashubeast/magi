@@ -1,30 +1,27 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
 DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
-SQLALCHEMY_DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PASS}@0.0.0.0:3306/magi" # in-memory DB
+SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@0.0.0.0:3306/magi"
 
-engine = create_engine(
+engine = create_async_engine(
 	SQLALCHEMY_DB_URL,
 	pool_pre_ping=True
 )
 
-SessionLocal = sessionmaker(
+AsyncSessionLocal = sessionmaker(
 	bind = engine,
-	autoflush = False,
-	autocommit = False
+	class_ = AsyncSession,
+	expire_on_commit= False
 )
 
 Base = declarative_base()
 
 # dependency for FastAPI routes
-def get_db():
-	db = SessionLocal()
-	try:
-		yield db
-	finally:
-		db.close()
+async def get_db():
+	async with AsyncSessionLocal() as session:
+		yield session

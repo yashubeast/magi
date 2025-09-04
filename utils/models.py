@@ -83,4 +83,4 @@ class Configuration(Base):
 	__tablename__ = 'configuration'
 
 	name = Column(String(25), primary_key=True, unique=True)
-	value = Column(DECIMAL(10, 5), nullable=False)
+	value = Column(DECIMAL(20, 5), nullable=False)
