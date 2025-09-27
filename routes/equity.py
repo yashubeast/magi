@@ -15,7 +15,7 @@ async def equity():
 
 @router.post('/eval', response_model=schemas.EvalResponse)
 async def eval(req: schemas.Eval, db: DB):
-	return await funcs.eval(req, db)
+	return await fun.eval(req, db)
 
 @router.get('/balance')
 async def balance(req: schemas.Eval) -> int:

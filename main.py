@@ -1,6 +1,8 @@
+from contextlib import asynccontextmanager
+
 import uvicorn, os
 from fastapi import FastAPI
-from utils.db import Base, engine, SessionLocal
+from utils.db import Base, engine, AsyncSessionLocal
 from routes import equity
 from utils.lib import default_rows
 from dotenv import load_dotenv
@@ -9,11 +11,21 @@ from dotenv import load_dotenv
 load_dotenv()
 PORT = int(os.environ.get("PORT", 8080))
 
-# create tables
-Base.metadata.create_all(bind=engine)
-with SessionLocal() as db: default_rows(db)
+# startup
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	# create tables
+	async with engine.begin() as db:
+		await db.run_sync(Base.metadata.create_all)
+
+	# insert default rows
+	async with AsyncSessionLocal() as session:
+		await default_rows(session)
+
+	yield # hand over to FastAPI
+
 # init
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # include routers
 app.include_router(equity.router, prefix = '/equity')

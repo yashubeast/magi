@@ -21,17 +21,21 @@ async def user(db: AsyncSession) -> Optional[int]:
 T = TypeVar("T", DiscordUsers, MinecraftUsers)
 async def platform_user(model: Type[T], platform_id: str, db: AsyncSession) -> Optional[int]:
 	try:
-		async with db.begin():
-			unid = await user(db)
-			new_user = model(
-				unid=unid,
-				platform_id=platform_id
-			)
-			db.add(new_user)
-			await db.flush()
-			return unid
-	except Exception:
-		log.error("exception at new.platform_user")
+		# generate a new unid
+		unid = await user(db)
+		# create a new platform user using unid
+		new_user = model(
+			unid=unid,
+			platform_id=platform_id
+		)
+		# add user
+		db.add(new_user)
+		await db.flush()
+		await db.commit()
+		return unid
+	except Exception as e:
+		log.error(f"exception at new.platform_user: {e}")
+		await db.rollback()
 		return None
 
 async def eval_coin(unid: int, value: Decimal, to_admin: Decimal, db: AsyncSession):
