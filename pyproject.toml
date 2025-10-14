@@ -6,8 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "asyncmy>=0.2.10",
+    "colorlog>=6.9.0",
     "dotenv>=0.9.9",
     "fastapi>=0.116.1",
+    "httpx>=0.28.1",
     "logger>=1.4",
     "pymysql>=1.1.2",
     "requests>=2.32.5",
