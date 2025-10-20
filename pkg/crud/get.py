@@ -1,10 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
-from typing import Type
-from typing import List
-from typing import Tuple
 from decimal import Decimal
 
 from pkg import TypePlatform
@@ -13,31 +9,31 @@ from pkg import Platform
 from pkg import PlatformModel
 from pkg import Coins
 
-async def discord_tax_rate(db: AsyncSession) -> Optional[Decimal]:
+async def discord_tax_rate(db: AsyncSession) -> Decimal | None:
 	stmt = select(Configuration.value).where(Configuration.name == "discord_tax_rate")
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
 
-async def discord_msg_bonus(db: AsyncSession) -> Optional[Decimal]:
+async def discord_msg_bonus(db: AsyncSession) -> Decimal | None:
 	stmt = select(Configuration.value).where(Configuration.name == "discord_msg_bonus")
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
 
 # get unid using specified platform id
-async def unid(model: Type[TypePlatform], platform_id: str, db: AsyncSession) -> Optional[str]:
+async def unid(model: type[TypePlatform], platform_id: str, db: AsyncSession) -> str | None:
 	stmt = select(model.unid).where(model.platform_id == platform_id)
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
 
 # get a column from specified platform
-async def platform_row(model: Type[TypePlatform], platform_id: str, db: AsyncSession) -> Optional[TypePlatform]:
+async def platform_row(model: type[TypePlatform], platform_id: str, db: AsyncSession) -> TypePlatform | None:
 	stmt = select(model).where(model.platform_id == platform_id)
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
 
 # get platform table object from platform enum
-async def platform_model(platform: Platform) -> Type[TypePlatform]:
-	platform: Type[TypePlatform] = PlatformModel.get(platform)
+async def platform_model(platform: Platform) -> type[TypePlatform]:
+	platform: type[TypePlatform] = PlatformModel.get(platform)
 	return platform
 
 # get balance in decimal using unid
@@ -69,7 +65,7 @@ class CoinSelection:
 		return f"CoinSelection(id={self.coin_id}, value={self.value})"
 
 # get unspent coin list of a user using unid
-async def unspent_coin_list(user_unid: str, db: AsyncSession) -> List[CoinSelection]:
+async def unspent_coin_list(user_unid: str, db: AsyncSession) -> list[CoinSelection]:
 
 	stmt = (
 		select(Coins.coin_id, Coins.value)
@@ -79,20 +75,20 @@ async def unspent_coin_list(user_unid: str, db: AsyncSession) -> List[CoinSelect
 		)
 	)
 	result = await db.execute(stmt)
-	_unspent_coin_list: List[CoinSelection] = [CoinSelection(c.coin_id, c.value) for c in result.all()]
+	_unspent_coin_list: list[CoinSelection] = [CoinSelection(c.coin_id, c.value) for c in result.all()]
 
 	return _unspent_coin_list
 
 # coin list to use for a transaction with a specified amount
 def transaction_candidates(
-	_unspent_coin_list: List[CoinSelection],
+	_unspent_coin_list: list[CoinSelection],
 	amount: Decimal
-) -> Optional[Tuple[List[CoinSelection], Decimal]]:
+) -> tuple[list[CoinSelection], Decimal] | None:
 
 	# sort the coin list from smallest to largest (when doing a transaction we always merge small coins)
-	sorted_unspent_coin_list: List[CoinSelection] = sorted(_unspent_coin_list, key=lambda c: c.value)
+	sorted_unspent_coin_list: list[CoinSelection] = sorted(_unspent_coin_list, key=lambda c: c.value)
 
-	selected_coins: List[CoinSelection] = []
+	selected_coins: list[CoinSelection] = []
 	current_sum = Decimal('0')
 
 	# iterate through the sorted coins, adding them until amount if reached
@@ -109,7 +105,7 @@ def transaction_candidates(
 	else: return selected_coins, current_sum # unreachable but linter is a bitch
 
 # lock coins for transaction
-async def transaction_lock(coins_to_lock: List[CoinSelection], db: AsyncSession) -> Optional[List["Coins"]]:
+async def transaction_lock(coins_to_lock: list[CoinSelection], db: AsyncSession) -> list["Coins"] | None:
 
 	candidates_ids = [coin.coin_id for coin in coins_to_lock]
 

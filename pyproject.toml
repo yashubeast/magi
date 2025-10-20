@@ -1,5 +1,5 @@
 [project]
-name = "magi-py"
+name = "magi"
 version = "0.1.0"
 description = "magi in python"
 readme = "README.md"

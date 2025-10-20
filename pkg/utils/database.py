@@ -8,7 +8,7 @@ DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
 DB_PORT = os.environ.get("DB_PORT", "3306")
 DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
-SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/magi"
+SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/equity"
 
 engine = create_async_engine(
 	SQLALCHEMY_DB_URL,

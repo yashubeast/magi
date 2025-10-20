@@ -5,12 +5,13 @@ from .lib import Platform
 from .lib import PlatformModel
 from .logger import log
 from . import models
-from .models import CoinTransferReason
+from .models import TransactionReason
+from .models import TransactionLinkReason
 from .models import Users
 from .models import DiscordUsers
-from .models import DiscordMsgLogs
 from .models import MinecraftUsers
 from .models import Coins
-from .models import CoinTransfers
+from .models import Transactions
+from .models import TransactionLinks
 from .models import Configuration
 from . import schemas

@@ -32,32 +32,18 @@ async def default_entries(db: AsyncSession):
 	config_exists = result.scalars().first()
 	if not config_exists:
 		db.add_all([
-			Configuration(name="discord_tax_rate", value=5.5),
+			Configuration(name="discord_tax_rate", value=96.4),
 			Configuration(name="discord_msg_bonus", value=0.001),
 		])
 		configuration_created = True
 
-	# view for balance (unspent coins)
-	unspent_coins = text("""
-		CREATE OR REPLACE VIEW v_unspent_coins AS
+	# view for a lot of things
+	view_all = text("""
+		CREATE OR REPLACE VIEW v_all AS
 		SELECT
 			T1.unid,
-			COALESCE(SUM(T2.value), 0.00) AS sum_of_unspent_coins,
-			T3.platform_id as discord_id,
-			T4.platform_id as minecraft_id
-		FROM users as T1
-		LEFT JOIN coins AS T2 ON T1.unid = T2.unid AND T2.spent = FALSE
-		LEFT JOIN discord_users AS T3 ON T1.unid = T3.unid
-		LEFT JOIN minecraft_users AS T4 ON T1.unid = T4.unid
-		GROUP BY T1.unid, T3.platform_id, T4.platform_id;
-	""")
-
-	# view for all balance (all coins)
-	all_coins = text("""
-		CREATE OR REPLACE VIEW v_all_coins AS
-		SELECT
-			T1.unid,
-			COALESCE(SUM(T2.value), 0.00) AS sum_of_all_coins,
+			COALESCE(SUM(T2.value), 0.00) AS sigma_coins,
+			COALESCE(SUM(CASE WHEN T2.spent = FALSE THEN T2.value ELSE 0.00 END), 0.00) AS balance,
 			T3.platform_id as discord_id,
 			T4.platform_id as minecraft_id
 		FROM users as T1
@@ -68,8 +54,7 @@ async def default_entries(db: AsyncSession):
 	""")
 
 	try:
-		await db.execute(unspent_coins)
-		await db.execute(all_coins)
+		await db.execute(view_all)
 		await db.commit()
 		if admin_created: log.info(f"created admin user with unid: {admin_unid}")
 		if configuration_created: log.info("inserted default configuration rows")

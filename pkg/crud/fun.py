@@ -6,7 +6,6 @@ from decimal import Decimal
 from typing import Type
 from typing import Optional
 
-from pkg import DiscordMsgLogs
 from pkg import DiscordUsers
 from pkg import schemas
 
@@ -22,13 +21,11 @@ async def eval(req: schemas.Eval, db: AsyncSession) -> schemas.Response:
 
 			# get platform model
 			platform: Type[TypePlatform] = await get.platform_model(req.platform)
-			if platform == DiscordUsers:
-				if not req.message_id: return schemas.Response(success=False, reason="message_id not provided")
 
 			# required values
 			platform_id: str = req.platform_id
 			message_length: str = req.message_length
-			current_timestamp: int = int(time.time()) if req.debug_timestamp is None else int(req.debug_timestamp)
+			current_timestamp: int = int(time.time())
 			message_bonus: Decimal = await get.discord_msg_bonus(db)
 			tax_rate: Decimal = await get.discord_tax_rate(db)
 
@@ -42,7 +39,8 @@ async def eval(req: schemas.Eval, db: AsyncSession) -> schemas.Response:
 				message_count = 1
 			else:
 				unid = row.unid
-				time_gap = current_timestamp - row.last_message
+				# time_gap = current_timestamp - row.last_message
+				time_gap = 60 # this is for simulation
 				message_count = row.message_count
 
 			log.debug(f"fun.eval: got values: \n"
@@ -106,7 +104,7 @@ async def eval(req: schemas.Eval, db: AsyncSession) -> schemas.Response:
 				update(platform)
 				# using and_ here to shut the linter up: every platform object (sql model)
 				# used in this function must have a platform_id column
-				.where(and_(platform.platform_id == platform_id))
+				.where(platform.platform_id == platform_id)
 				.values(
 					message_count = platform.message_count + new_message_count,
 					last_message = current_timestamp
@@ -115,19 +113,9 @@ async def eval(req: schemas.Eval, db: AsyncSession) -> schemas.Response:
 			await db.execute(stmt)
 			log.debug("fun.eval: updated platform entry")
 
-			# result here is always going to be 0
+			# result here is always going to be 0 and not like 0.77 gain since decimal points are given to miner
+			# it can also be in negative when debugging tho, when the time gap is in negative
 			if total_value < 1: return schemas.Response(success=False, reason=f"gain below 1", result=int(total_value))
-
-			# log message if discord
-			if req.platform == schemas.Platform.discord:
-				msg_log = DiscordMsgLogs(
-					discord_id = platform_id,
-					message_id = req.message_id,
-					value = total_value,
-					timestamp = current_timestamp,
-				)
-				db.add(msg_log)
-				log.debug("fun.eval: added message entry")
 
 			# give coin
 			await new.eval_coin(unid, total_value, to_admin, db)
