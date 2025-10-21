@@ -1,30 +1,30 @@
-import requests
-import time
-import random
+from typing import TypedDict
+from typing import cast
 import threading
+import requests
+import random
+import time
 
-url = "localhost:8072"
-eval_endpoint = "/equity/eval"
-balance_endpoint = "/equity/balance"
+url = "localhost:8072/equity"
+eval_endpoint = "/discord/eval"
+balance_endpoint = "/discord/balance"
+pay_endpoint = "/discord/pay"
 
-amt = 1000
-platforms = ["discord"] # alternates randomly
-platform_ids = ["yasu", "shen", "shmk", "bumm"]
+amt = 100
+# platforms = ["discord"] # alternates randomly
+platform_ids = ["yasu", "shen"]
 message_length_range = (10, 100) # random choice
 
 eval_data = {
-	"platform": "",
 	"platform_id": "",
 	"message_length": 0
 }
 
 balance_data = {
-	"platform": "",
-	"platform_id": "",
+	"platform_id": ""
 }
 
 pay_data = {
-	"platform": "",
 	"sender_platform_id": "",
 	"receiver_platform_id": "",
 	"amount": 0,
@@ -38,13 +38,19 @@ E = '\033[0m'
 
 api_urls = {
 	"eval": f"http://{url}{eval_endpoint}",
-	"balance": f"http://{url}{balance_endpoint}"
+	"balance": f"http://{url}{balance_endpoint}",
+	"pay": f"http://{url}{pay_endpoint}"
 }
 
 # padding of zeros for attempt numbers
 padding_width = len(str(amt))
 
 outputs_lock = threading.Lock()
+
+class Response(TypedDict):
+	success: bool
+	reason: str | None
+	result: int | None
 
 outputs: dict[str, list[int]] = {
 	'total_attempts': [],
@@ -82,7 +88,8 @@ def process(platformid: str):
 		_eval_attempts += 1
 		if eval(i, platformid):
 			_eval_successes += 1
-		else: _eval_failures += 1
+		else:
+			_eval_failures += 1
 
 		# 20%
 		if roll <= 0.20:
@@ -95,9 +102,10 @@ def process(platformid: str):
 
 				# 10%
 				if roll2 <= 0.50:
-					pay(i, platformid, _balance)
+					_ = pay(i, platformid, _balance)
 
-			else: _balance_failures += 1
+			else:
+				_balance_failures += 1
 
 	# finish
 
@@ -119,14 +127,13 @@ def process(platformid: str):
 def eval(i: int, pid: str):
 	# update unique data
 	data = eval_data.copy()
-	data["platform"] = random.choice(platforms)
 	data["platform_id"] = pid
 	data["message_length"] = int(random.randint(*message_length_range))
 
 	try:
 		response = requests.post(api_urls["eval"], json=data, timeout=5)
 		status = response.status_code
-		res = response.json()
+		res: Response = cast(Response, response.json())
 
 		color = get_color_for_status(status)
 
@@ -137,18 +144,21 @@ def eval(i: int, pid: str):
 		if response.status_code == 200:
 			result = True
 			if res['success']:
-				res_result: int = res.get("result", 0)
+				res_result = res.get("result", 0)
+				if res_result is None:
+					res_result = 0
 				if res_result > 99:
 					gain_color = G
 				elif res_result > 0:
 					gain_color = Y
 				else:
 					symbol = "-"
-					if res_result < 0: res_result = int(str(res_result)[1:])
+					if res_result < 0:
+						res_result = int(str(res_result)[1:])
 					gain_color = R
 			else:
 				symbol = ""
-				res_result = res['reason']
+				res_result = f"{res['reason']}, {res['result']}"
 				gain_color = R
 		else:
 			result = False
@@ -163,13 +173,12 @@ def eval(i: int, pid: str):
 def balance(i: int, pid: str) -> int | None:
 	# update unique data
 	data = balance_data.copy()
-	data["platform"] = random.choice(platforms)
 	data["platform_id"] = pid
 
 	try:
 		response = requests.get(api_urls["balance"], json=data, timeout=5)
 		status = response.status_code
-		res = response.json()
+		res: Response = cast(Response, response.json())
 
 		color = get_color_for_status(status)
 
@@ -177,7 +186,8 @@ def balance(i: int, pid: str) -> int | None:
 
 		if response.status_code == 200:
 			if res['success']:
-				res_result = int(res.get("result", 0))
+				res_result = res.get("result", 0)
+				res_result = int(res_result) if res_result is not None else 0
 				result = res_result
 			else:
 				res_result = f"{R}{res['reason']}{E}"
@@ -198,24 +208,26 @@ def pay(i: int, pid: str, user_balance: int):
 
 	# update unique data
 	data = pay_data.copy()
-	data["platform"] = random.choice(platforms)
 	data["sender_platform_id"] = pid
 	data["receiver_platform_id"] = random.choice(other_pids)
-	data["amount"] = (user_balance / 10)
+	data["amount"] = int(user_balance / 10)
 
 	try:
-		response = requests.get(api_urls["pay"], json=data, timeout=5)
+		response = requests.post(api_urls["pay"], json=data, timeout=5)
 		status = response.status_code
-		res = response.json()
+		res: Response = cast(Response, response.json())
 
 		color = get_color_for_status(status)
 
 		result = None
+		res_result = None
 
 		if response.status_code == 200 and res['success']:
 			res_result = f"{G}{res['reason']}{E}"
+			result = True
 		else:
 			res_result = f"{R}{res['reason']}{E}"
+			result = False
 
 		print(f"{pid} {i:0{padding_width}} Pay  {color}{status}{E}: {res_result}")
 		return result
@@ -237,7 +249,7 @@ if __name__ == "__main__":
 
 	start_time = time.perf_counter()
 
-	threads = []
+	threads: list[threading.Thread] = []
 
 	for platformID in platform_ids:
 

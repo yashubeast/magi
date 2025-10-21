@@ -1,9 +1,11 @@
-import os
-from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+from dotenv import load_dotenv
+import os
 
-load_dotenv()
+_ = load_dotenv()
 DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
 DB_PORT = os.environ.get("DB_PORT", "3306")
 DB_USER = os.environ.get("DB_USER")
@@ -21,7 +23,6 @@ AsyncSessionLocal = async_sessionmaker(
 	expire_on_commit= False
 )
 
-# Base = declarative_base()
 class Base(DeclarativeBase):
 	pass
 

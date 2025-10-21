@@ -1,16 +1,16 @@
-import enum
-import time
-import secrets
-from sqlalchemy import String
-from sqlalchemy import ForeignKey
-from sqlalchemy import DECIMAL
-from sqlalchemy import CheckConstraint
-from sqlalchemy import Enum
-from sqlalchemy import CHAR
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import CheckConstraint
+from sqlalchemy import ForeignKey
+from sqlalchemy import DECIMAL
+from sqlalchemy import String
+from sqlalchemy import Enum
+from sqlalchemy import CHAR
 from decimal import Decimal
+import secrets
+import enum
+import time
 
 from . import database
 
@@ -18,14 +18,14 @@ Base = database.Base
 
 class TransactionReason(enum.Enum):
 	genesis = 'genesis'
-	tax = 'tax'
+	pay = 'pay'
 
 class TransactionLinkReason(enum.Enum):
 	input = 'input'
 	output = 'output'
 
 class Users(Base):
-	__tablename__ = 'users'
+	__tablename__: str = 'users'
 
 	unid: Mapped[str] = mapped_column(CHAR(16), primary_key=True, default=lambda: secrets.token_hex(8))
 
@@ -40,7 +40,7 @@ class Users(Base):
 	# )
 
 class DiscordUsers(Base):
-	__tablename__ = 'discord_users'
+	__tablename__: str = 'discord_users'
 
 	unid:            Mapped[str] =   mapped_column(ForeignKey("users.unid"), primary_key=True)
 	platform_id:     Mapped[str] =   mapped_column(String(24), unique=True)
@@ -50,7 +50,7 @@ class DiscordUsers(Base):
 	users: Mapped["Users"] = relationship(back_populates="discord_users")
 
 class MinecraftUsers(Base):
-	__tablename__ = 'minecraft_users'
+	__tablename__: str= 'minecraft_users'
 
 	unid:            Mapped[str] =   mapped_column(ForeignKey('users.unid'), primary_key=True)
 	platform_id:     Mapped[str] =   mapped_column(String(36), unique=True)
@@ -60,7 +60,7 @@ class MinecraftUsers(Base):
 	users: Mapped["Users"] = relationship(back_populates='minecraft_users')
 
 class Coins(Base):
-	__tablename__ = 'coins'
+	__tablename__: str = 'coins'
 
 	unid:        Mapped[str] =       mapped_column(ForeignKey('users.unid'))
 	coin_id:     Mapped[int] =       mapped_column(primary_key=True, autoincrement=True)
@@ -71,10 +71,10 @@ class Coins(Base):
 	users:                 Mapped["Users"] =              relationship(back_populates="coins")
 	transaction_links:     Mapped["TransactionLinks"] =   relationship(back_populates="coins")
 
-	__table_args__ = (CheckConstraint('value >= 0', name='check_value_non_negative'),)
+	__table_args__: tuple[CheckConstraint] = (CheckConstraint('value >= 0', name='check_value_non_negative'),)
 
 class Transactions(Base):
-	__tablename__ = 'transactions'
+	__tablename__: str = 'transactions'
 
 	txid:               Mapped[int] =             mapped_column(primary_key=True, autoincrement=True)
 	# from_unid:        Mapped[Optional[str]] =   mapped_column(ForeignKey('users.unid'))
@@ -87,7 +87,7 @@ class Transactions(Base):
 	# to_user:   Mapped["Users"] =       relationship(foreign_keys=[to_unid], back_populates='coin_transfers_to_user')
 
 class TransactionLinks(Base):
-	__tablename__ = 'transaction_links'
+	__tablename__: str = 'transaction_links'
 
 	id: Mapped[int] =        mapped_column(primary_key=True, autoincrement=True)
 	txid: Mapped[int] =      mapped_column(ForeignKey('transactions.txid'))
@@ -98,7 +98,7 @@ class TransactionLinks(Base):
 	coins:          Mapped["Coins"] =          relationship(back_populates="transaction_links")
 
 class Configuration(Base):
-	__tablename__ = 'configuration'
+	__tablename__: str = 'configuration'
 
 	name:    Mapped[str] =       mapped_column(String(25), primary_key=True)
 	value:   Mapped[Decimal] =   mapped_column(DECIMAL(20, 5))

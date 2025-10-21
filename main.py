@@ -1,30 +1,30 @@
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+from fastapi import FastAPI
 import uvicorn
 import os
-from fastapi import FastAPI
-from dotenv import load_dotenv
-from contextlib import asynccontextmanager
+
+from pkg import database
+from pkg import default_entries
+from pkg import log
 
 from routes import equity
 
-from pkg import database
-from pkg import lib
-from pkg import log
-
 # env stuff
-load_dotenv()
+_ = load_dotenv()
 PORT = int(os.environ.get("PORT", 8080))
 RELOAD = os.environ.get("UVICORN_RELOAD", "True").lower() == "true"
 
 # startup
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # pyright: ignore[reportUnusedParameter]
 	# create tables
 	async with database.engine.begin() as db:
 		await db.run_sync(database.Base.metadata.create_all)
 
 	# insert default rows
 	async with database.AsyncSessionLocal() as session:
-		await lib.default_entries(session)
+		await default_entries(session)
 
 	yield # hand over to FastAPI
 

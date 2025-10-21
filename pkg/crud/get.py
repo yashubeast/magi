@@ -1,40 +1,36 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
-from pkg import TypePlatform
-from pkg import Configuration
-from pkg import Platform
-from pkg import PlatformModel
-from pkg import Coins
+from ..utils.models import Configuration
+from ..utils.models import Coins
+from ..utils.lib import TypePlatform
 
-async def discord_tax_rate(db: AsyncSession) -> Decimal | None:
+async def discord_tax_rate(db: AsyncSession) -> Decimal:
 	stmt = select(Configuration.value).where(Configuration.name == "discord_tax_rate")
 	result = await db.execute(stmt)
-	return result.scalar_one_or_none()
+	output = result.scalar_one_or_none()
+	return output if output is not None else Decimal('95.00')
 
-async def discord_msg_bonus(db: AsyncSession) -> Decimal | None:
+async def discord_msg_bonus(db: AsyncSession) -> Decimal:
 	stmt = select(Configuration.value).where(Configuration.name == "discord_msg_bonus")
 	result = await db.execute(stmt)
-	return result.scalar_one_or_none()
+	output = result.scalar_one_or_none()
+	return output if output is not None else Decimal('0.00100')
 
 # get unid using specified platform id
-async def unid(model: type[TypePlatform], platform_id: str, db: AsyncSession) -> str | None:
-	stmt = select(model.unid).where(model.platform_id == platform_id)
+async def unid(platform: type[TypePlatform], platform_id: str, db: AsyncSession) -> str | None:
+	stmt = select(platform.unid).where(platform.platform_id == platform_id)
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
 
 # get a column from specified platform
-async def platform_row(model: type[TypePlatform], platform_id: str, db: AsyncSession) -> TypePlatform | None:
-	stmt = select(model).where(model.platform_id == platform_id)
+async def platform_row(platform: type[TypePlatform], platform_id: str, db: AsyncSession) -> TypePlatform | None:
+	stmt = select(platform).where(platform.platform_id == platform_id)
 	result = await db.execute(stmt)
 	return result.scalar_one_or_none()
-
-# get platform table object from platform enum
-async def platform_model(platform: Platform) -> type[TypePlatform]:
-	platform: type[TypePlatform] = PlatformModel.get(platform)
-	return platform
 
 # get balance in decimal using unid
 async def balance_in_decimal(user_unid: str, db: AsyncSession) -> Decimal:
@@ -43,14 +39,14 @@ async def balance_in_decimal(user_unid: str, db: AsyncSession) -> Decimal:
 		select(func.sum(Coins.value))
 		.where(
 			Coins.unid == user_unid,
-			Coins.spent == False
+			Coins.spent == False  # noqa: E712
 		)
 	)
 	result = await db.execute(stmt)
 	bal = result.scalar_one_or_none()
-	bal: Decimal = Decimal(bal) if bal is not None else Decimal('0')
+	_bal: Decimal = Decimal(bal) if bal is not None else Decimal('0')
 
-	return bal
+	return _bal
 
 ## transaction related fun.pay
 
@@ -61,8 +57,8 @@ class CoinSelection:
 		self.coin_id: int = coin_id
 		self.value: Decimal = value
 
-	def __repr__(self):
-		return f"CoinSelection(id={self.coin_id}, value={self.value})"
+	# def __repr__(self):
+	# 	return f"CoinSelection(id={self.coin_id}, value={self.value})"
 
 # get unspent coin list of a user using unid
 async def unspent_coin_list(user_unid: str, db: AsyncSession) -> list[CoinSelection]:
@@ -71,11 +67,12 @@ async def unspent_coin_list(user_unid: str, db: AsyncSession) -> list[CoinSelect
 		select(Coins.coin_id, Coins.value)
 		.where(
 			Coins.unid == user_unid,
-			Coins.spent == False
+			Coins.spent == False  # noqa: E712
 		)
 	)
 	result = await db.execute(stmt)
-	_unspent_coin_list: list[CoinSelection] = [CoinSelection(c.coin_id, c.value) for c in result.all()]
+	result2 = result.all()
+	_unspent_coin_list: list[CoinSelection] = [CoinSelection(c[0], c[1]) for c in result2]  # pyright: ignore[reportAny]
 
 	return _unspent_coin_list
 
@@ -102,10 +99,9 @@ def transaction_candidates(
 
 	if current_sum < amount:
 		return None
-	else: return selected_coins, current_sum # unreachable but linter is a bitch
 
 # lock coins for transaction
-async def transaction_lock(coins_to_lock: list[CoinSelection], db: AsyncSession) -> list["Coins"] | None:
+async def transaction_lock(coins_to_lock: list[CoinSelection], db: AsyncSession) -> Sequence[Coins] | None:
 
 	candidates_ids = [coin.coin_id for coin in coins_to_lock]
 

@@ -1,14 +1,12 @@
-from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Union
-from typing import Final
-from typing import Type
-from enum import Enum
+from sqlalchemy import select
+from sqlalchemy import text
+from typing import TypeVar
 
-from .models import Users
+from .models import MinecraftUsers
 from .models import Configuration
 from .models import DiscordUsers
-from .models import MinecraftUsers
+from .models import Users
 from .logger import log
 
 async def default_entries(db: AsyncSession):
@@ -54,22 +52,15 @@ async def default_entries(db: AsyncSession):
 	""")
 
 	try:
-		await db.execute(view_all)
+		_ = await db.execute(view_all)
 		await db.commit()
-		if admin_created: log.info(f"created admin user with unid: {admin_unid}")
-		if configuration_created: log.info("inserted default configuration rows")
+		if admin_created:
+			log.info(f"created admin user with unid: {admin_unid}")
+		if configuration_created:
+			log.info("inserted default configuration rows")
 
 	except Exception as e:
 		await db.rollback()
 		log.error("error creating default entries at main.py", e)
 
-class Platform(str, Enum):
-	discord = "discord"
-	minecraft = "minecraft"
-
-TypePlatform = Union[DiscordUsers, MinecraftUsers]
-
-PlatformModel: Final[dict[Platform, Type[TypePlatform]]] = {
-	Platform.discord: DiscordUsers,
-	Platform.minecraft: MinecraftUsers
-}
+TypePlatform = TypeVar("TypePlatform", bound=DiscordUsers | MinecraftUsers)
