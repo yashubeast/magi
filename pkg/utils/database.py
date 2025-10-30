@@ -13,20 +13,20 @@ DB_PASS = os.environ.get("DB_PASS")
 SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/equity"
 
 engine = create_async_engine(
-	SQLALCHEMY_DB_URL,
-	pool_pre_ping=True
+  SQLALCHEMY_DB_URL,
+  pool_pre_ping=True
 )
 
 AsyncSessionLocal = async_sessionmaker(
-	bind = engine,
-	class_ = AsyncSession,
-	expire_on_commit= False
+  bind = engine,
+  class_ = AsyncSession,
+  expire_on_commit= False
 )
 
 class Base(DeclarativeBase):
-	pass
+  pass
 
 # dependency for FastAPI routes
 async def get_db():
-	async with AsyncSessionLocal() as session:
-		yield session
+  async with AsyncSessionLocal() as session:
+    yield session

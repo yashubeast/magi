@@ -10,15 +10,15 @@ log.setLevel(LOG_LEVEL)
 
 handler = logging.StreamHandler()
 formatter = colorlog.ColoredFormatter(
-	"%(log_color)s%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-	datefmt = "%d-%m-%Y %H:%M:%S",
-	log_colors = {
-		'DEBUG': 'purple',
-		'INFO': 'green',
-		'WARNING': 'yellow',
-		'ERROR': 'red',
-		'CRITICAL': 'bold_red',
-	}
+  "%(log_color)s%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+  datefmt = "%d-%m-%Y %H:%M:%S",
+  log_colors = {
+    'DEBUG': 'purple',
+    'INFO': 'green',
+    'WARNING': 'yellow',
+    'ERROR': 'red',
+    'CRITICAL': 'bold_red',
+  }
 )
 
 handler.setFormatter(formatter)

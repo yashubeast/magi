@@ -16,6 +16,6 @@ prod:
 
 sim:
 	clear
-	uv run simulate.py
+	uv run sim.py
 
 all: dev
