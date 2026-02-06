@@ -19,8 +19,6 @@ from ..utils.lib import UserEval
 from ..utils.logger import log
 from ..utils import schemas
 
-# more imports are in functions
-
 class User(Generic[TypePlatform]):
 
   def __init__(
@@ -32,16 +30,11 @@ class User(Generic[TypePlatform]):
     self.platform = platform
     self.platform_id = platform_id
     self.db = db
-    # pay
-    # self.receiver_platform_id = receiver_platform_id
-    # self.amount = amount
 
     from .get import Get
     from .new import New
     self.get = Get(self)
     self.new = New(self)
-
-  ##############################################################################
 
   async def evalMessage(self, message_length: int) -> schemas.Response:
     
@@ -68,8 +61,6 @@ class User(Generic[TypePlatform]):
 
     return schemas.Response(success=True)
 
-  ##############################################################################
-
   async def balance(self) -> schemas.Response:
 
     # user validation
@@ -80,8 +71,6 @@ class User(Generic[TypePlatform]):
     balance_in_decimal: Decimal = await self.get.balance(str(row.unid))
     _balance: int = int(balance_in_decimal)
     return schemas.Response(success=True, result=_balance)
-
-  ##############################################################################
 
   async def pay(self, req: schemas.Pay) -> schemas.Response:
 
@@ -247,8 +236,6 @@ class User(Generic[TypePlatform]):
 
     await self.db.commit()
 
-################################################################################
-
 async def payout(session_factory: async_sessionmaker):
 
   async with session_factory() as session:
@@ -259,248 +246,3 @@ async def payout(session_factory: async_sessionmaker):
     except Exception as e:
       await session.rollback()
       log.error(f"payout failed: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# async def eval(
-#   req: schemas.Eval,
-#   platform: type[TypePlatform],
-#   db: AsyncSession
-# ) -> schemas.Response:
-#
-#   from . import new
-#   from . import get
-#
-#   max_retries_eval: int = 3
-#
-#   for attempt in range(max_retries_eval):
-#     try:
-#       async with db.begin():
-#
-#         # required values
-#         platform_id: str = req.platform_id
-#         message_length: int = req.message_length
-#         current_timestamp: int = int(time.time())
-#         message_bonus: Decimal | None = await get.discord_msg_bonus(db)
-#         tax_rate: Decimal | None = await get.discord_tax_rate(db)
-#
-#         row: TypePlatform | None = await get.platform_row(platform, platform_id, True, db)
-#
-#         if row is None: # new user
-#           unid: str = await new.platform_user(platform, platform_id, db)
-#           time_gap: int = 10
-#           message_count: int = 1
-#         else: # existing user
-#           unid = row.unid
-#           # time_gap = current_timestamp - row.last_message
-#           time_gap = 60 # this is for simulation
-#           message_count = row.message_count
-#
-#         log.debug(
-#           f"fun.eval: got values: \n"
-#           f"> row = {row}\n"
-#           f"> platform = {platform}\n"
-#           f"> unid = {unid}\n"
-#           f"> time_gap = {time_gap}\n"
-#           f"> message_length = {message_length}\n"
-#           f"> message_count = {message_count}\n"
-#           f"> message_bonus = {message_bonus}\n"
-#           f"> tax_rate = {tax_rate}"
-#         )
-#
-#         # mathematical part
-#         total_gain = await get.formulated_value(time_gap, message_length, message_count, message_bonus)
-#         to_user, to_admin = await get.taxed_formulated_value(total_gain, tax_rate)
-#
-#         log.debug(
-#           "fun.eval: finished evaluation: \n"  # pyright: ignore[reportImplicitStringConcatenation]
-#           f"> to_user = {to_user}\n"
-#           f"> to_admin = {to_admin}"
-#         )
-#
-#         # only evaluate when user earns >= 1 coins
-#         new_message_count = 1 if to_user >= 1 else 0
-#
-#         # update row with new vals
-#         if row is not None:
-#           row.message_count += new_message_count
-#
-#           # row.last_message = current_timestamp
-#           row.last_message = row.last_message + 60 # this is for simulation
-#
-#         # result here is always going to be 0 and not like 0.77 gain since decimal points are given to miner
-#         # it can also be in negative when debugging tho, when the time gap is in negative
-#         if to_user < 1:
-#           return schemas.Response(
-#             success=False, reason="gain below 1", result=int(to_user)
-#           )
-#
-#         # give coin
-#         await new.eval_coin(unid, to_user, to_admin, db)
-#         log.debug("fun.eval: gave coin")
-#
-#       return schemas.Response(success=True, result=int(to_user))
-#
-#     except Exception as e:
-#
-#       await db.rollback()
-#
-#       if "Record has changed" in str(e) and attempt < max_retries_eval - 1:
-#         log.debug("reattempting")
-#         continue
-#       else:
-#         log.debug("exception at fun.eval: ", e)
-#         return schemas.Response(success=False, reason=f"{e}")
-#
-#   return schemas.Response(success=False, reason="failed 3 attempts")
-#
-#
-# async def balance(req: schemas.Balance, platform: type[TypePlatform], db: AsyncSession) -> schemas.Response:
-#
-#   from . import get
-#
-#   try:
-#     async with db.begin():
-#       unid: str | None = await get.unid(platform, req.platform_id, db)
-#
-#       if unid is None:
-#         return schemas.Response(success=False, reason='invalid user')
-#
-#       balance_in_decimal: Decimal = await get.balance_in_decimal(unid, db)
-#
-#       bal: int = int(balance_in_decimal)
-#
-#     return schemas.Response(success=True, result=bal)
-#
-#   except Exception as e:
-#     log.debug('exception at fun.balance: ', e)
-#     return schemas.Response(success=False, reason=f"{e}")
-
-# async def pay(
-#   req: schemas.Pay,
-#   platform: type[TypePlatform],
-#   db: AsyncSession
-# ) -> schemas.Response:
-#
-#   from . import get
-#   from . import new
-#
-#   try:
-#     async with db.begin():
-#
-#       # handle self transfer, not doing it right now because i keep getting fucking inconsistent use of indentation IM GONNA KILL MYSELF
-#       if req.sender_platform_id == req.receiver_platform_id: return schemas.Response(success=False, reason="self transfer not allowed")
-#
-#       sender_unid: str | None = await get.unid(
-#         platform, req.sender_platform_id, db
-#       )
-#       receiver_unid: str | None = await get.unid(
-#         platform, req.receiver_platform_id, db
-#       )
-#       if sender_unid is None: return schemas.Response(success=False, reason="invalid sender")
-#       if receiver_unid is None: return schemas.Response(success=False, reason="invalid receiver")
-#       if sender_unid == receiver_unid: return schemas.Response(success=False, reason="self transfer not allowed")
-#
-#       amount: Decimal = Decimal(req.amount)
-#
-#       sender_balance: Decimal = await get.balance_in_decimal(sender_unid, db)
-#       if not sender_balance >= amount: return schemas.Response(success=False, reason="insufficient balance")
-#
-#       _unspent_coin_list = await get.unspent_coin_list(sender_unid, db)
-#
-#       # transaction_candidates here CAN return None
-#       # however it won't here because the sender_balance is always going to be higher than amount
-#       # meaning there's always enough candidates
-#       # transaction_candidates: list[CoinSelection], sum_of_candidates = get.transaction_candidates(_unspent_coin_list, amount)
-#       _tuple: tuple[list[get.CoinSelection], Decimal] | None = (
-#         get.transaction_candidates(_unspent_coin_list, amount)
-#       )
-#       # still handling it cuz why the fuck not
-#       if _tuple is None:
-#         await db.rollback()
-#         return schemas.Response(success=False, reason="trouble finding coins to transfer")
-#
-#       transaction_candidates = _tuple[0]
-#       sum_of_candidates = _tuple[1]
-#       return_amount: Decimal = sum_of_candidates - amount
-#
-#       locked_coins = await get.transaction_lock(transaction_candidates, db)
-#       if locked_coins is None:
-#         # await db.rollback()
-#         # don't need db.rollback() cuz using "nowait=True" while locking the rows
-#         # the transaction automatically rolls back when leaving the transaction block
-#         return schemas.Response(
-#           success=False, reason="trouble locking coins, try again"
-#         )
-#
-#       for coin in locked_coins:
-#         coin.spent = True
-#
-#       txid: int = await new.transaction(TransactionReason.pay, db)
-#
-#       # give coin to users
-#
-#       receiver_coin: int = await new.coin(receiver_unid, amount, db)
-#       sender_coin: int | None = (
-#         await new.coin(sender_unid, return_amount, db)
-#         if return_amount >= Decimal("1")
-#         else None
-#       )
-#
-#       # make transaction links
-#       transaction_links: list[dict[str, int | TransactionLinkReason]] = []
-#
-#       # locked coins
-#       for coin in locked_coins:
-#         transaction_links.append(
-#           {
-#             "txid": txid,
-#             "coin_id": coin.coin_id,
-#             "type": TransactionLinkReason.input,
-#           }
-#         )
-#
-#         transaction_links.append(
-#           {
-#             "txid": txid,
-#             "coin_id": receiver_coin,
-#             "type": TransactionLinkReason.output,
-#           }
-#         )
-#
-#         if sender_coin is not None:
-#           transaction_links.append(
-#             {
-#               "txid": txid,
-#               "coin_id": sender_coin,
-#               "type": TransactionLinkReason.output,
-#             }
-#           )
-#
-#       stmt = insert(TransactionLinks)
-#       _ = await db.execute(stmt, transaction_links)
-#
-#     return schemas.Response(
-#       success=True,
-#       reason=f"paid: {amount}, gave: {int(sum_of_candidates)}, returned: {int(return_amount)}, txid: #{txid}, coins: {[int(c.value) for c in transaction_candidates]}"
-#     )
-#
-#   except Exception as e:
-#     log.debug("exception at fun.pay: ", e)
-#     return schemas.Response(success=False, reason=f"{e}")
-#
