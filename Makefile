@@ -16,6 +16,6 @@ prod:
 
 sim:
 	clear
-	uv run sim2.py
+	uv run sim.py
 
 all: dev

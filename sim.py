@@ -1,140 +1,168 @@
 import threading
 import random
 import time
+import requests
+from concurrent.futures import ThreadPoolExecutor
+from typing import TypedDict, Optional, List
 
-from var import outputs
-from var import outputs_lock
-from var import Eval
-from var import Balance
-from var import Pay
-from var import G, R, E
+##### constants & Types ########################################################
+G, R, Y, E = '\033[92m', '\033[91m', '\033[93m', '\033[0m'
 
-amt = 10
-platforms = ['discord']
-# platform_ids = []
-platform_ids = ['1']
-message_lengths = (20, 150)
+class APIResponse(TypedDict):
+  success: bool
+  reason: str | None
+  result: int | None
 
-iwidth = len(str(amt))
-char = ord('a')
+class APISpammer:
+  def __init__(
+    self,
+    base_url: str,
+    platforms: List[str],
+    platform_ids: List[str]
+  ):
+    self.base_url = base_url.rstrip('/')
+    self.platforms = platforms
+    self.platform_ids = platform_ids if platform_ids else [
+      chr(97 + i) for i in range(26)
+    ]
 
-if len(platform_ids) == 0:
-  for i in range (26):
-    letter = chr(char + i)
-    platform_ids.append(letter)
+    # statistics tracking
+    self.stats = {
+      'attempts': 0,
+      'success': 0,
+      'failure': 0,
+      'start_time': 0.0
+    }
+    self._lock = threading.Lock()
 
-def process(p: str, pid: str):
+  @staticmethod
+  def _get_status_color(code: int) -> str:
+    if 200 <= code < 300: return G
+    if 400 <= code < 500: return Y
+    return R
 
-  _eval_attempts = 0
-  _eval_successes = 0
-  _eval_failures = 0
+  def log(self, pid: str, action: str, code: str, detail: str = ""):
+    """Thread-safe logging to console."""
+    with self._lock:
+      print(f"[{pid}] {action.ljust(8)} | Status: {code} | {detail}")
 
-  _balance_attempts = 0
-  _balance_successes = 0
-  _balance_failures = 0
+  def run_eval(self, platform: str, pid: str) -> bool:
+    payload = {
+      "platform_id": pid,
+      "message_length": random.randint(20, 150)
+    }
+    try:
+      resp = requests.post(
+        f"{self.base_url}/{platform}/eval",
+        json=payload,
+        timeout=5
+      )
+      data: APIResponse = resp.json()
+      color = self._get_status_color(resp.status_code)
 
-  _pay_attempts = 0
-  _pay_successes = 0
-  _pay_failures = 0
+      self.log(
+        pid,
+        "EVAL",
+        f"{color}{resp.status_code}{E}"
+      )
+      return resp.status_code == 200 and data.get('success')
+    except Exception as e:
+      self.log(pid, "EVAL", f"{R}ERR{E}", str(e))
+      return False
 
-  i = 0
+  def run_balance(self, platform: str, pid: str) -> Optional[int]:
+    try:
+      resp = requests.get(
+        f"{self.base_url}/{platform}/balance",
+        json={"platform_id": pid},
+        timeout=5
+      )
+      data: APIResponse = resp.json()
+      if resp.status_code == 200 and data.get('success'):
+        self.log(
+          pid,
+          "BAL",
+          f"{G}200{E}",
+          f"{data.get('result')}"
+        )
+        return data.get('result')
+      return None
+    except Exception:
+      return None
 
-  # actual process
-  while _eval_attempts < amt:
+  def run_pay(self, platform: str, pid: str, balance: int):
+    target = random.choice([i for i in self.platform_ids if i != pid])
+    payload = {
+      "sender_platform_id": pid,
+      "receiver_platform_id": target,
+      "amount": balance // 10
+    }
+    try:
+      resp = requests.post(
+        f"{self.base_url}/{platform}/pay",
+        json=payload,
+        timeout=5
+      )
+      data: APIResponse = resp.json()
+      self.log(
+        pid,
+        "PAY",
+        f"{self._get_status_color(resp.status_code)}{resp.status_code}{E}",
+        f"{data.get('reason')}"
+      )
+    except Exception:
+      pass
 
-    i += 1
-    roll = random.random()
-    roll2 = random.random()
+  def worker_loop(self, platform: str, pid: str, iterations: int):
+    """The logic for a single worker thread."""
+    for _ in range(iterations):
+      success = self.run_eval(platform, pid)
 
-    # eval
-    _eval_attempts += 1
-    if Eval(i, p, pid, message_lengths, iwidth):
-      _eval_successes += 1
-    else:
-      _eval_failures += 1
+      with self._lock:
+        self.stats['attempts'] += 1
+        if success:
+          self.stats['success'] += 1
+        else:
+          self.stats['failure'] += 1
 
-    # 20%
-    if roll <= 0.20:
+      # Logic branches
+      if success and random.random() < 0.20:
+        bal = self.run_balance(platform, pid)
+        if bal and random.random() < 0.50:
+          self.run_pay(platform, pid, bal)
 
-      # balance
-      _balance_attempts += 1
-      _balance = Balance(i, p, pid, iwidth)
-      if _balance is not None:
-        _balance_successes += 1
+  def spam(self, iterations_per_id: int, max_workers: int = 10):
+    self.stats['start_time'] = time.perf_counter()
 
-        # 10%
-        if roll2 <= 0.50:
-          _pay_attempts += 1
-          if Pay(i, p, platform_ids, pid, _balance, iwidth):
-            _pay_successes += 1
-          else:
-            _pay_failures += 1
+    print(f"{Y}Starting spammer with {max_workers} workers...{E}\n")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+      for p in self.platforms:
+        for pid in self.platform_ids:
+          executor.submit(self.worker_loop, p, pid, iterations_per_id)
+
+    self.report()
+
+  def report(self):
+    duration = time.perf_counter() - self.stats['start_time']
+    total = self.stats['attempts']
+    print("\n" + "=" * 30)
+    print(f"TEST COMPLETE in {duration:.2f}s")
+    print(f"total requests: {total}")
+    print(f"successes: {G}{self.stats['success']}{E}")
+    print(f"failures:  {R}{self.stats['failure']}{E}")
+    print(f"throughput: {total / duration:.2f} req/s")
+    print("=" * 30)
 
 
-      else:
-        _balance_failures += 1
-
-  # finish
-
-  _total_attempts = _eval_attempts + _balance_attempts + _pay_attempts
-  _total_successes = _eval_successes + _balance_successes + _pay_successes
-  _total_failures = _eval_failures + _balance_failures + _pay_failures
-
-  with outputs_lock:
-    outputs['total_attempts'].append(_total_attempts)
-    outputs['total_successes'].append(_total_successes)
-    outputs['total_failures'].append(_total_failures)
-    outputs['eval_attempts'].append(_eval_attempts)
-    outputs['eval_successes'].append(_eval_successes)
-    outputs['eval_failures'].append(_eval_failures)
-    outputs['balance_attempts'].append(_balance_attempts)
-    outputs['balance_successes'].append(_balance_successes)
-    outputs['balance_failures'].append(_balance_failures)
-    outputs['pay_attempts'].append(_pay_attempts)
-    outputs['pay_successes'].append(_pay_successes)
-    outputs['pay_failures'].append(_pay_failures)
+##### execution ################################################################
 
 if __name__ == "__main__":
+  spammer = APISpammer(
+    base_url="http://localhost:8072/equity",
+    platforms=["discord"],
+    platform_ids=["1", "2", "3"]  # Or leave empty [] for a-z
+  )
 
-  start_time = time.perf_counter()
-
-  threads: list[threading.Thread] = []
-
-  for p in platforms:
-    for pid in platform_ids:
-
-      t = threading.Thread(
-        target = process,
-        args = (p, pid,)
-      )
-
-      threads.append(t)
-
-      t.start()
-
-  for t in threads:
-    t.join()
-
-  total_attempts = sum(outputs['total_attempts'])
-  total_successes = sum(outputs['total_successes'])
-  total_failures = sum(outputs['total_failures'])
-  eval_attempts = sum(outputs['eval_attempts'])
-  eval_successes = sum(outputs['eval_successes'])
-  eval_failures = sum(outputs['eval_failures'])
-  balance_attempts = sum(outputs['balance_attempts'])
-  balance_successes = sum(outputs['balance_successes'])
-  balance_failures = sum(outputs['balance_failures'])
-  pay_attempts = sum(outputs['pay_attempts'])
-  pay_successes = sum(outputs['pay_successes'])
-  pay_failures = sum(outputs['pay_failures'])
-
-  end_time = time.perf_counter()
-  total_time = end_time - start_time
-
-  print("\n--- Simulation Results ---")
-  print(f"Reqs:  {total_attempts} | {G}{total_successes}{E}/{R}{total_failures}{E}")
-  print(f"Eval:  {eval_attempts} | {G}{eval_successes}{E}/{R}{eval_failures}{E}")
-  print(f"Bal :  {balance_attempts} | {G}{balance_successes}{E}/{R}{balance_failures}{E}")
-  print(f"Pay :  {pay_attempts} | {G}{pay_successes}{E}/{R}{pay_failures}{E}")
-  print(f"Time:  {total_time:.2f} seconds")
-  print(f"Req/s: {total_attempts / total_time:.2f}")
+  # run 50 iterations for every platform_id combined
+  spammer.spam(iterations_per_id=500, max_workers=15)
