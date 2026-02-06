@@ -67,6 +67,3 @@ if __name__ == "__main__":
     port = PORT,
     reload = RELOAD
   )
-
-# TODO: make cascades on table relations so deleting any user deletes everything that belonged to them
-# TODO: payout currently hogs api requests
