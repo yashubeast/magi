@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from dotenv import load_dotenv
+from typing import Annotated
+from fastapi import Depends
 import os
 
 _ = load_dotenv()
@@ -14,7 +16,8 @@ SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/eq
 
 engine = create_async_engine(
   SQLALCHEMY_DB_URL,
-  pool_pre_ping=True
+  pool_pre_ping=True,
+  echo = False
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -30,3 +33,5 @@ class Base(DeclarativeBase):
 async def get_db():
   async with AsyncSessionLocal() as session:
     yield session
+
+DB = Annotated[AsyncSession, Depends(get_db)]

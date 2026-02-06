@@ -9,7 +9,7 @@ from var import Balance
 from var import Pay
 from var import G, R, E
 
-amt = 1
+amt = 10
 platforms = ['discord']
 # platform_ids = []
 platform_ids = ['1']

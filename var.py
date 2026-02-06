@@ -168,7 +168,7 @@ def Pay(i: int, p: str, pids: list[str], pid: str, user_balance: int, iwidth: in
       res_reason = f"{R}{res['reason']}{E}"
       result = False
 
-    _print(pid, i, iwidth, 'Pay ', colored_status, _res_reason = res_reason)
+    _print(pid, i, iwidth, 'Pay ', colored_status, res_reason)
     return result
 
   except requests.exceptions.RequestException as e:

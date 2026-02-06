@@ -5,6 +5,7 @@ description = "magi in python"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "apscheduler>=3.11.1",
     "asyncmy>=0.2.10",
     "colorlog>=6.9.0",
     "dotenv>=0.9.9",

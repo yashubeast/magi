@@ -5,12 +5,12 @@ import os
 LOG_LEVEL_ENV = os.environ.get("LOG_LEVEL", "DEBUG").upper()
 LOG_LEVEL = getattr(logging, LOG_LEVEL_ENV, logging.DEBUG)
 
-log = logging.getLogger('app')
+log = logging.getLogger('APP')
 log.setLevel(LOG_LEVEL)
 
 handler = logging.StreamHandler()
 formatter = colorlog.ColoredFormatter(
-  "%(log_color)s%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+  "%(log_color)s[%(levelname)s] %(asctime)s%(reset)s%(white)s: %(message)s",
   datefmt = "%d-%m-%Y %H:%M:%S",
   log_colors = {
     'DEBUG': 'purple',
