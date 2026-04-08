@@ -3,6 +3,7 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy import text
 from typing import TypedDict
+from typing import TypeAlias
 from typing import TypeVar
 import asyncio
 import enum
@@ -112,7 +113,9 @@ class PlatformToEnumLink:
       log.error("error finding class using enum")
       raise ValueError
 
-TypePlatform = TypeVar("TypePlatform", bound= DiscordUsers | MinecraftUsers)
+# TypePlatform = TypeVar("TypePlatform", bound= DiscordUsers | MinecraftUsers)
+TypePlatform: TypeAlias = DiscordUsers | MinecraftUsers
+TP = TypeVar("TP", bound = TypePlatform)
 
 class UserEval:
 

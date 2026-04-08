@@ -13,18 +13,18 @@ from ..utils.models import Coins
 from ..utils.lib import PlatformAcitivities
 from ..utils.lib import PlatformToEnumLink
 from ..utils.lib import PayoutQueueLock
-from ..utils.lib import TypePlatform
+from ..utils.lib import TP
 from ..utils.lib import PayoutQueue
 from ..utils.lib import UserEval
 from ..utils.lib import Cls
 from ..utils.logger import log
 from ..utils import schemas
 
-class User(Generic[TypePlatform]):
+class User(Generic[TP]):
 
   def __init__(
     self,
-    platform: type[TypePlatform],
+    platform: type[TP],
     platform_id: str,
     db: AsyncSession,
   ):
@@ -105,10 +105,6 @@ class User(Generic[TypePlatform]):
     _tuple: tuple[list[Coins], Decimal] = (
       self.get.transaction_candidates(_unspent_coin_list, amount)
     )
-    # still handling it cuz why the fuck not
-    if _tuple is None:
-      await self.db.rollback()
-      return schemas.Response(success=False, reason="trouble finding coins to transfer, enough balance for payment but trouble finding transaction candidates")
 
     transaction_candidates = _tuple[0]
     sum_of_candidates = _tuple[1]
@@ -181,7 +177,6 @@ class User(Generic[TypePlatform]):
 
     unid = await self.get.unid()
     txs = await self.get.transactions(unid)
-    platform_attr = self.platform.__tablename__
 
     transaction_list: Cls.TransactionList = []
 
@@ -215,16 +210,16 @@ class User(Generic[TypePlatform]):
         continue
 
       # find the counterparty_id
-      counterparty_id = "if you see this report the bug to yasu for big equity"
+      # counterparty_id = "if you see this report the bug to yasu for big equity"
+      counterparty_id = "idk"
       for link in tx.transaction_links: # looping transaction_links
         # TODO: account for multiple users instead of breaking on first counterparty user
         if link.coins.unid != unid:
-          u = link.coins.users # logic to grab id from the platform they are on
-          profile = getattr(u, platform_attr, None)
-          if profile:
-            counterparty_id = profile.platform_id
+          pid = await self.get.platform_id(link.coins.unid)
+          if pid:
+            counterparty_id = pid
           else:
-            counterparty_id = await self.get.platform_id(link.coins.unid)
+            counterparty_id = "idk"
           break
 
       transaction_list.append(Cls.TypedDicts.TransactionListInfo(
@@ -262,6 +257,9 @@ class User(Generic[TypePlatform]):
 
             userEvals = platform_ids[platform_id]
             platform_row = await self.get.platform_row(platform_id)
+            if platform_row is None:
+              log.error("payout function, platform_row doesn't exist")
+              break
 
             # update platform row
             platform_row.message_count += len(userEvals)

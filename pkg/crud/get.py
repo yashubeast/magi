@@ -13,6 +13,7 @@ from ..utils.models import Transactions
 from ..utils.models import Coins
 from ..utils.models import Users
 from ..utils.lib import TypePlatform
+from ..utils.lib import TP
 from ..utils.lib import UserEval
 from .fun import User
 from ..utils.logger import log
@@ -23,9 +24,10 @@ class Get:
     self.user = user
 
   # get balance of a user using unid
-  async def balance(self, unid: str = None) -> Decimal:
+  async def balance(self, unid: str | None = None) -> Decimal:
+    _ = await self.unid()
     if unid: _ = unid
-    else: _ = await self.unid()
+
     stmt = (
       select(func.sum(Coins.value))
       .where(
@@ -40,9 +42,10 @@ class Get:
     return _bal
 
   # get the platform row
-  async def platform_row(self, platform_id: str = None, lock: bool = False) -> TypePlatform | None:
+  async def platform_row(self, platform_id: str | None = None, lock: bool = False) -> TypePlatform | None:
     _ = self.user.platform_id
     if platform_id is not None: _ = platform_id
+
     stmt = select(self.user.platform).where(self.user.platform.platform_id == _)
     if lock: stmt = stmt.with_for_update()
     result = await self.user.db.execute(stmt)
@@ -55,7 +58,7 @@ class Get:
     else: return None
 
   # get unid of user
-  async def unid(self, platform_id: str = None) -> str | None:
+  async def unid(self, platform_id: str | None = None) -> str | None:
     row = await self.platform_row(
       platform_id
       if platform_id is not None
@@ -97,7 +100,7 @@ class Get:
         message_count,
         message_bonus
       )
-      to_user, to_admin = await taxed_formulated_value(total_gain, tax_rate)
+      to_user, _ = await taxed_formulated_value(total_gain, tax_rate)
 
       reward = reward + to_user
       message_count += 1
@@ -105,11 +108,10 @@ class Get:
     return reward
 
   # get transactions of a user
-  async def transactions(self, unid: str = None) -> Sequence:
+  async def transactions(self, unid: str | None = None) -> Sequence:
 
     # fetch unid if not provided
     if unid is None: unid = await self.unid()
-    platform = self.user.platform
     dynamicPlatform = getattr(
       Users, f"{self.user.platform.__platform_name__}_users"
     )
@@ -140,7 +142,7 @@ class Get:
   # transaction stuff ##########################################################
 
   # unspent coin list
-  async def unspent_coin_list(self, unid: str = None) -> list[Coins]:
+  async def unspent_coin_list(self, unid: str | None = None) -> list[Coins]:
 
     if unid: _ = unid
     else: _ = await self.unid()
@@ -207,18 +209,26 @@ async def discord_tax_rate(db: AsyncSession) -> Decimal:
   stmt = select(Configuration.value).where(Configuration.name == "discord_tax_rate")
   result = await db.execute(stmt)
   output = result.scalar_one_or_none()
-  return output if output is not None else log.error("configuration fetching error")
+  if output is None:
+    log.error("configuration fetching error")
+    # NOTE: raise some readable error here
+    raise ValueError
+  return output
 
 async def discord_msg_bonus(db: AsyncSession) -> Decimal:
   stmt = select(Configuration.value).where(Configuration.name == "discord_msg_bonus")
   result = await db.execute(stmt)
   output = result.scalar_one_or_none()
-  return output if output is not None else log.error("configuration fetching error")
+  if output is None:
+    log.error("configuration fetching error")
+    # NOTE: raise some readable error here 2
+    raise ValueError
+  return output
 
 # get unid using specified platform id
 
 # get a column from specified platform
-async def platform_row(platform: type[TypePlatform], platform_id: str, lock_row: bool, db: AsyncSession) -> TypePlatform | None:
+async def platform_row(platform: type[TP], platform_id: str, lock_row: bool, db: AsyncSession) -> TP | None:
   stmt = select(platform).where(platform.platform_id == platform_id)
   if lock_row:
     stmt = stmt.with_for_update()

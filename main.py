@@ -24,7 +24,7 @@ scheduler = AsyncIOScheduler()
 
 # startup
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_: FastAPI):
 
   # create tables
   async with database.engine.begin() as db:
@@ -67,3 +67,6 @@ if __name__ == "__main__":
     port = PORT,
     reload = RELOAD
   )
+
+# TODO: theres no logs for payouts
+# TODO: payout isn't giving any money

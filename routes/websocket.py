@@ -3,12 +3,8 @@ from fastapi import APIRouter
 from fastapi import WebSocket
 from fastapi import Depends
 from typing import Annotated
-import json
 
-from pkg import DiscordUsers
 from pkg import database
-from pkg import schemas
-from pkg import fun
 from pkg.utils.lib import PayoutQueue
 
 router = APIRouter()
