@@ -2,6 +2,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy import CheckConstraint
+from sqlalchemy import BigInteger
 from sqlalchemy import ForeignKey
 from sqlalchemy import DECIMAL
 from sqlalchemy import String
@@ -55,7 +56,7 @@ class PlatformMixin:
 
   unid:            Mapped[str] =       mapped_column(ForeignKey("users.unid"), primary_key=True)
   message_count:   Mapped[int] =       mapped_column(default=1)
-  last_message:    Mapped[int] =       mapped_column(default=lambda: int(time.time()))
+  last_message:    Mapped[int] =       mapped_column(BigInteger, default=lambda: int(time.time()))
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
@@ -122,7 +123,7 @@ class Transactions(Base):
   txid:        Mapped[int] =   mapped_column(primary_key=True, autoincrement=True)
   reason:      Mapped[str] =   mapped_column(Enum(TransactionReason))
   platform:    Mapped[str] =   mapped_column(Enum(TransactionPlatform))
-  timestamp:   Mapped[int] =   mapped_column(default=lambda: int(time.time()))
+  timestamp:   Mapped[int] =   mapped_column(BigInteger, default=lambda: int(time.time()))
 
   transaction_links:   Mapped[list["TransactionLinks"]] =   relationship(back_populates="transactions")
 
