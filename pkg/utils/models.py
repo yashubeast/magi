@@ -19,7 +19,7 @@ from . import database
 # naming conventions
 # for any platforms the
 # classname should be DiscordUsers aka xxxUsers
-# tablename should be discord_users aka xxx_Users
+# tablename should be discord_users aka xxx_users
 # (convert classname to lowercased and insert _ where snake case triggers)
 # platform name should be the xxx part aka discord (notice lowercase)
 
@@ -48,9 +48,10 @@ class Users(Base):
   coins:             Mapped["Coins"] =            relationship(back_populates='users')
 
 class PlatformMixin:
-  # registry to map platform names to their sql classes
 
+  # registry to map platform names to their sql classes
   _registry: dict[str, Type["PlatformMixin"]] = {}
+  __platform_name__: str
 
   unid:            Mapped[str] =       mapped_column(ForeignKey("users.unid"), primary_key=True)
   message_count:   Mapped[int] =       mapped_column(default=1)
@@ -64,7 +65,10 @@ class PlatformMixin:
 
   @classmethod
   def get_class_by_name(cls, name: str) -> Type["PlatformMixin"]:
-    return cls._registry.get(name)
+    result = cls._registry.get(name)
+    if result is None:
+      raise KeyError(f"no platform registered with name: {name!r}")
+    return result
 
   def __repr__(self):
     # fallback to the classname if __platform_name__ doesn't exist

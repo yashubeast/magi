@@ -17,7 +17,8 @@ SQLALCHEMY_DB_URL = f"mysql+asyncmy://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/eq
 engine = create_async_engine(
   SQLALCHEMY_DB_URL,
   pool_pre_ping=True,
-  echo = False
+  echo = False,
+  pool_recycle = 3600
 )
 
 AsyncSessionLocal = async_sessionmaker(
