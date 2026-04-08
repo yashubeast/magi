@@ -131,7 +131,8 @@ class UserEval:
     return f"time: {self.current_time}, len: {self.message_length}"
 
 PayoutQueueLock = asyncio.Lock()
-PayoutQueue: dict[type[DiscordUsers|MinecraftUsers], dict[str, dict[str, list[UserEval]]]] = defaultdict(
+# platform -> evalType(message/smth) -> platform_id -> userEval
+PayoutQueue: dict[type[TypePlatform], dict[str, dict[str, list[UserEval]]]] = defaultdict(
   lambda: defaultdict(
     lambda: defaultdict(list)
   )

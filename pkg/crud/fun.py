@@ -235,31 +235,28 @@ class User(Generic[TP]):
   async def payout(self):
 
     async with PayoutQueueLock:
-      # discord / minecraft
-      for platform in PayoutQueue:
+      for platform in PayoutQueue: # discord / minecraft
         activities = PayoutQueue[platform]
-        # message / smth else
-        for activity in activities:
+
+        for activity in activities: # message / smth else
           platform_ids = activities[activity]
 
-          # init txn
-          # txn = await self.new.transaction(
-          #   TransactionReason.genesis_message,
-          #   PlatformToEnumLink.get_enum_using_class(platform)
-          # )
+          # create a transaction for each unique platform + activity
           txn = Transactions(
             reason = TransactionReason.genesis_message,
             platform = PlatformToEnumLink.get_enum_using_class(platform),
             transaction_links = []
           )
 
+          any_rewards = False
+
           for platform_id in platform_ids:
 
             userEvals = platform_ids[platform_id]
-            platform_row = await self.get.platform_row(platform_id)
+            platform_row = await self.get.platform_row(platform_id, platform)
             if platform_row is None:
               log.error("payout function, platform_row doesn't exist")
-              break
+              continue
 
             # update platform row
             platform_row.message_count += len(userEvals)
@@ -273,16 +270,20 @@ class User(Generic[TP]):
             if reward < Decimal("1"): continue
 
             # confirm addition of transaction if atleast 1 user earned money
-            if txn not in self.db: self.db.add(txn)
+            any_rewards = True
 
             # pay money
+            coin = Coins(
+              unid = platform_row.unid,
+              value = reward
+            )
+            self.db.add(coin)
             transaction_link = TransactionLinks(
               type = TransactionLinkReason.output,
-              coins = Coins(
-                unid = platform_row.unid,
-                value = reward
-              )
+              coins = coin,
+              transactions = txn
             )
+            log.debug(f"[payout] {transaction_link}")
             txn.transaction_links.append(transaction_link)
 
             log.debug(
@@ -290,12 +291,17 @@ class User(Generic[TP]):
               f"pid[{platform_id}] amt[{reward}] msgs[{len(userEvals)}]"
             )
 
+          if any_rewards:
+            self.db.add(txn)
+
       # empty PayoutQueue
       PayoutQueue.clear()
 
     await self.db.commit()
 
 async def payout(session_factory: async_sessionmaker):
+
+  log.info("payout starting")
 
   async with session_factory() as session:
     try:
@@ -305,3 +311,6 @@ async def payout(session_factory: async_sessionmaker):
     except Exception as e:
       await session.rollback()
       log.error(f"payout failed: {e}")
+
+    finally:
+      log.info("payout finished")

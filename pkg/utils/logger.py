@@ -24,7 +24,7 @@ formatter = colorlog.ColoredFormatter(
 handler.setFormatter(formatter)
 log.addHandler(handler)
 
-# log.debug("debug message")
+log.debug("debug message")
 # log.info("info message")
 # log.warning("warning message")
 # log.error("error message")

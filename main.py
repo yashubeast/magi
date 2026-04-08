@@ -69,4 +69,4 @@ if __name__ == "__main__":
   )
 
 # TODO: theres no logs for payouts
-# TODO: payout isn't giving any money
+# TODO: payout isn't making txs

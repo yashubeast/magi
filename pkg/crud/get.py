@@ -42,11 +42,14 @@ class Get:
     return _bal
 
   # get the platform row
-  async def platform_row(self, platform_id: str | None = None, lock: bool = False) -> TypePlatform | None:
-    _ = self.user.platform_id
-    if platform_id is not None: _ = platform_id
+  async def platform_row(self, platform_id: str | None = None, platform: type[TP] | None = None, lock: bool = False) -> TP | None:
+    pid = self.user.platform_id
+    if platform_id is not None: pid = platform_id
 
-    stmt = select(self.user.platform).where(self.user.platform.platform_id == _)
+    p = self.user.platform
+    if platform is not None: p = platform
+
+    stmt = select(p).where(p.platform_id == pid)
     if lock: stmt = stmt.with_for_update()
     result = await self.user.db.execute(stmt)
     return result.scalar_one_or_none()
