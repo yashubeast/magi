@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from .lib import Cls
 
 class Eval(BaseModel):
   platform_id: str
@@ -16,3 +17,4 @@ class Response(BaseModel):
   success: bool
   reason: str | None = None
   result: int | None = None
+  transactionList: Cls.TransactionList | None = None

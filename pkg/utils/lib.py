@@ -2,8 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy import text
+from typing import TypedDict
 from typing import TypeVar
 import asyncio
+import enum
 
 from .models import TransactionPlatform
 from .models import MinecraftUsers
@@ -101,11 +103,11 @@ class PlatformToEnumLink:
       raise ValueError
 
   @classmethod
-  def get_class_using_enum(cls, enum: TransactionPlatform) -> type:
+  def get_class_using_enum(cls, _enum: TransactionPlatform) -> type:
     if not cls._links_reversed: cls.initialize()
 
     try:
-      return cls._links_reversed[enum]
+      return cls._links_reversed[_enum]
     except KeyError:
       log.error("error finding class using enum")
       raise ValueError
@@ -134,3 +136,22 @@ PayoutQueue: dict[type[DiscordUsers|MinecraftUsers], dict[str, dict[str, list[Us
 
 class PlatformAcitivities:
   message = 'message'
+
+class Cls:
+
+  class Enums:
+
+    class TransactionListType(enum.Enum):
+      sent = "sent"
+      received = "received"
+
+  class TypedDicts:
+
+    class TransactionListInfo(TypedDict):
+      txid: int
+      amount: int
+      counterparty_platform_id: str
+      timestamp: int
+      type: "Cls.Enums.TransactionListType"
+
+  TransactionList = list[TypedDicts.TransactionListInfo]

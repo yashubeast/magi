@@ -5,8 +5,13 @@ from sqlalchemy import func
 from decimal import Decimal
 import math
 
+from sqlalchemy.orm import joinedload
+
+from .. import TransactionLinks
 from ..utils.models import Configuration
+from ..utils.models import Transactions
 from ..utils.models import Coins
+from ..utils.models import Users
 from ..utils.lib import TypePlatform
 from ..utils.lib import UserEval
 from .fun import User
@@ -51,9 +56,24 @@ class Get:
 
   # get unid of user
   async def unid(self, platform_id: str = None) -> str | None:
-    row = await self.platform_row(platform_id if platform_id is not None else self.user.platform_id)
+    row = await self.platform_row(
+      platform_id
+      if platform_id is not None
+      else self.user.platform_id
+    )
     if row: return str(row.unid)
     return None
+
+  # get platform_id of user
+  async def platform_id(self, unid: str) -> str | None:
+
+    stmt = (
+      select(self.user.platform.platform_id)
+      .where(self.user.platform.unid == unid)
+    )
+    result = await self.user.db.execute(stmt)
+    pid = result.scalar_one_or_none()
+    return str(pid) if pid else None
 
   async def userEvalRewardMessage(self, _platform_row: TypePlatform, user_evals: list[UserEval]) -> Decimal:
 
@@ -83,6 +103,39 @@ class Get:
       message_count += 1
 
     return reward
+
+  # get transactions of a user
+  async def transactions(self, unid: str = None) -> Sequence:
+
+    # fetch unid if not provided
+    if unid is None: unid = await self.unid()
+    platform = self.user.platform
+    dynamicPlatform = getattr(
+      Users, f"{self.user.platform.__platform_name__}_users"
+    )
+
+    # subquery to find all txids where the user owns a coin
+    userTxs = (
+      select(TransactionLinks.txid)
+      .join(Coins)
+      .where(Coins.unid == unid)
+      .scalar_subquery()
+    )
+
+    stmt = (
+      select(Transactions)
+      .where(Transactions.txid.in_(userTxs)) # load transactions row
+      .options(
+        joinedload(Transactions.transaction_links) # load links row
+        .joinedload(TransactionLinks.coins) # load coins row
+        .joinedload(Coins.users) # load users row to get platform_row using relation
+        .selectinload(dynamicPlatform) # load platform_row
+      )
+      .order_by(Transactions.timestamp.desc())
+    )
+
+    result = await self.user.db.execute(stmt)
+    return result.unique().scalars().all()
 
   # transaction stuff ##########################################################
 

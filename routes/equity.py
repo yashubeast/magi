@@ -28,6 +28,11 @@ async def pay(req: schemas.Pay, db: DB) -> schemas.Response:
   user = fun.User(DiscordUsers, req.sender_platform_id, db)
   return await user.pay(req)
 
+@router.get('/discord/transactions', response_model = schemas.Response)
+async def transactions(req: schemas.Balance, db: DB) -> schemas.Response:
+  user = fun.User(DiscordUsers, req.platform_id, db)
+  return await user.transactions()
+
 # minecraft
 # @router.post('/minecraft/eval', response_model=schemas.Response)
 # async def minecraft_eval(req: schemas.Eval, db: DB) -> schemas.Response:

@@ -16,6 +16,7 @@ from ..utils.lib import PayoutQueueLock
 from ..utils.lib import TypePlatform
 from ..utils.lib import PayoutQueue
 from ..utils.lib import UserEval
+from ..utils.lib import Cls
 from ..utils.logger import log
 from ..utils import schemas
 
@@ -175,6 +176,66 @@ class User(Generic[TypePlatform]):
       success=True,
       reason=f"paid: {amount}, gave: {int(sum_of_candidates)}, returned: {int(return_amount)}, txid: #{txn.txid}, coins: {[int(c.value) for c in transaction_candidates]}"
     )
+
+  async def transactions(self) -> schemas.Response:
+
+    unid = await self.get.unid()
+    txs = await self.get.transactions(unid)
+    platform_attr = self.platform.__tablename__
+
+    transaction_list: Cls.TransactionList = []
+
+    # looping transactions
+    for tx in txs:
+
+      # TODO: check by debugging first, then fix if the return amount on overpay is being accounted for or not
+      # determine type and amount
+      sum_input = sum(
+        l.coins.value
+        for l in tx.transaction_links
+        if l.coins.unid == unid
+        and l.type.value == "input"
+      )
+      sum_output = sum(
+        l.coins.value
+        for l in tx.transaction_links
+        if l.coins.unid == unid
+        and l.type.value == "output"
+      )
+
+      # determine SENT or RECEIVED
+      if sum_input > sum_output:
+        t_type = Cls.Enums.TransactionListType.sent
+        net_amount = sum_input - sum_output
+      elif sum_output > sum_input:
+        t_type = Cls.Enums.TransactionListType.received
+        net_amount = sum_output - sum_input
+      else:
+        log.error("yo this ain't supposed to happen, check fun.User.transactions")
+        continue
+
+      # find the counterparty_id
+      counterparty_id = "if you see this report the bug to yasu for big equity"
+      for link in tx.transaction_links: # looping transaction_links
+        # TODO: account for multiple users instead of breaking on first counterparty user
+        if link.coins.unid != unid:
+          u = link.coins.users # logic to grab id from the platform they are on
+          profile = getattr(u, platform_attr, None)
+          if profile:
+            counterparty_id = profile.platform_id
+          else:
+            counterparty_id = await self.get.platform_id(link.coins.unid)
+          break
+
+      transaction_list.append(Cls.TypedDicts.TransactionListInfo(
+        txid = tx.txid,
+        amount = int(net_amount),
+        counterparty_platform_id = counterparty_id,
+        timestamp = tx.timestamp,
+        type = t_type
+      ))
+
+    return schemas.Response(success = True, transactionList=transaction_list)
 
   async def payout(self):
 
